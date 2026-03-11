@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gopro-overlay"
-version = "0.129.0"
+version = "0.130.0"
 description = "Overlay graphics dashboards onto GoPro footage, or create videos from GPX or FIT files"
 readme = "README-PYPI.md"
 requires-python = ">=3.11"
@@ -45,17 +45,16 @@ cairo=["pycairo==1.28.0"]
 test = ["gopro-overlay[cairo]", "pytest", "pytest-asyncio"]
 dev = ["gopro-overlay[test]", "black", "viztracer", "bump-my-version"]
 
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["gopro_overlay*"]
+
+[tool.setuptools.package-data]
+"gopro_overlay" = ["**/*.xml", "**/*.json"]
 
 [tool.setuptools]
-packages = [
-    "gopro_overlay",
-    "gopro_overlay.gpmf",
-    "gopro_overlay.gpmf.visitors",
-    "gopro_overlay.icons",
-    "gopro_overlay.layouts",
-    "gopro_overlay.widgets",
-    "gopro_overlay.widgets.cairo",
-]
+include-package-data = true
+
 script-files= [
     "bin/gopro-contrib-data-extract.py",
     "bin/gopro-cut.py",
@@ -68,5 +67,4 @@ script-files= [
     "bin/gopro-to-gpx.py",
     "bin/gopro-debug.py",
 ]
-include-package-data = true
 
