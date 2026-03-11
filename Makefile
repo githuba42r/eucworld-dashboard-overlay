@@ -127,12 +127,12 @@ publish: ensure-not-released ensure-pristine clean test-distribution
 .PHONY: bump
 bump:
 	$(BIN)/pip install bump-my-version
-	$(BIN)/bump-my-version minor
+	$(BIN)/bump-my-version bump minor
 
 .PHONY: bump-major
 bump-major:
 	$(BIN)/pip install bump-my-version
-	$(BIN)/bump-my-version major
+	$(BIN)/bump-my-version bump major
 
 
 .PHONY: help
