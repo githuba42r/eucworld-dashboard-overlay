@@ -204,6 +204,7 @@ https://github.com/JuanIrache/gopro-telemetry
 ## Latest Changes
 
 If you find any issues with new releases, please discuss in [GitHub Discussions](https://github.com/time4tea/gopro-dashboard-overlay/discussions)
+- 0.131.0 [Enhancement] - Improved parsing of FIT files with gear changes thanks to  [@geomandolyn](https://github.com/geomandolyn) to raising issue & sample data.
 - 0.130.0 [Enhancement] - New capability to update the journey map & moving journey map - path and location styling.  Mulţumesc mult to [@andrei-micuda](https://github.com/andrei-micuda)
   - [Hopefully no visible effect] Vendored / Copied in source code from geotiler as it's no longer compatible with new python versions & updated to be compatible. 
 - 0.129.0 [Enhancement] [Breaking] - Update python compatibility - Newly Compatible: 3.13, 3.14. No longer compatible 3.9, 3.10 
