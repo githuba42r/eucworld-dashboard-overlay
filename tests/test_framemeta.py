@@ -161,6 +161,41 @@ def test_skipping_items():
     assert skipped[1].lat == 3.0
     assert skipped[2].lat == 6.0
 
+def test_process_deltas_trailing_entries_get_values():
+    """With 5 entries and skip=2, entries 3 and 4 have no forward pair.
+    The backward-pairing loop should fill them with the same delta value."""
+    fm = FrameMeta()
+    for i in range(5):
+        fm.add(timeunits(millis=i * 100), Entry(datetime_of(i), n=i))
+
+    fm.process_deltas(lambda a, b, c: {"delta": b.n - a.n}, skip=2)
+
+    # Forward-paired: 0→2, 1→3, 2→4
+    assert fm[0].delta == 2
+    assert fm[1].delta == 2
+    assert fm[2].delta == 2
+    # Backward-paired: 3←1, 4←2
+    assert fm[3].delta == 2
+    assert fm[4].delta == 2
+
+
+def test_process_deltas_trailing_entries_with_larger_skip():
+    """With 5 entries and skip=3, entries 2-4 have no forward pair.
+    All should still receive values via backward pairing."""
+    fm = FrameMeta()
+    for i in range(5):
+        fm.add(timeunits(millis=i * 100), Entry(datetime_of(i), n=i * 10))
+
+    fm.process_deltas(lambda a, b, c: {"delta": b.n - a.n}, skip=3)
+
+    # Forward-paired: 0→3, 1→4
+    assert fm[0].delta == 30
+    assert fm[1].delta == 30
+    # Backward-paired: 2←(none, idx<0 skipped), 3←0, 4←1
+    assert fm[3].delta is not None
+    assert fm[4].delta is not None
+
+
 def test_bugfix_timedelta_too_small_infinite():
     fm = FrameMeta()
     for i in range(0,60):
