@@ -130,6 +130,10 @@ def gopro_dashboard_arguments(args=None):
     only.add_argument("--video-time-end", choices=["file-created", "file-modified", "file-accessed", "video-created"],
                       help="Use file/video dates for aligning video and GPS information, only when --use-gpx-only. "
                            "'video-created' reads the creation_time embedded in the MP4 metadata.")
+    only.add_argument("--gpx-time-offset", type=float, default=0.0,
+                      help="Offset in seconds to apply to the GPX/video time alignment. "
+                           "Positive values advance the overlay (shift GPX data earlier relative to video), "
+                           "negative values retard it. e.g. --gpx-time-offset -30 if the video is 30s behind the GPX.")
 
     maps = parser.add_argument_group("Mapping", "Display of Maps")
 

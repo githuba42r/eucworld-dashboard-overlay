@@ -171,6 +171,13 @@ if __name__ == "__main__":
                             start_date = start_date - duration.timedelta()
                             end_date = start_date + duration.timedelta()
 
+                        # Apply GPX time offset
+                        if start_date is not None and args.gpx_time_offset:
+                            offset_td = datetime.timedelta(seconds=args.gpx_time_offset)
+                            start_date = start_date + offset_td
+                            end_date = end_date + offset_td
+                            log(f"GPX time offset:  {args.gpx_time_offset:+.1f}s")
+
                     else:
                         generate = "overlay"
 
