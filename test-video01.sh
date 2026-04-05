@@ -12,7 +12,7 @@ python "/home/philg/working/gopro-dashboard-overlay/bin/gopro-dashboard.py" \
     --layout xml \
     --layout-xml "/home/philg/working/gopro-dashboard-overlay/test-video01.xml" \
     --map-style osm \
-    --gpx-time-offset -30.0 \
+    --gpx-time-offset 30.0 \
     --profile nvgpu \
     "/home/philg/Video/Fernvale - 2026-03-28/DJI_20260328105859_0046_D.MP4" \
     "/home/philg/Video/Fernvale - 2026-03-28/DJI_20260328105859_0046_D_overlay.MP4"

@@ -30,4 +30,5 @@ tests/**/*.diff_over_approved.png
 **/__pycache__/
 
 .vscode/settings.json
+.env*
 /tests/fit/2025-07-24-17-55-12.fit

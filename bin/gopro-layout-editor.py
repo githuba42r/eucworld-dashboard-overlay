@@ -55,6 +55,7 @@ class OverlayComponent:
     color: str = "#4488ff"
     canvas_rect_id: Optional[int] = None
     canvas_text_id: Optional[int] = None
+    canvas_handle_ids: dict = field(default_factory=dict)  # edge -> canvas item id
     xml_template: str = ""
     # Per-component custom properties (e.g. date/time formats)
     custom_props: dict = field(default_factory=dict)
@@ -65,18 +66,18 @@ class OverlayComponent:
 COMPONENT_DEFS = [
     ("date_and_time", "Date + Time", 200, 60, "#44aa88",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="date_and_time">
-        <component type="datetime" x="0" y="0" format="{date_format}" size="16" align="right"/>
-        <component type="datetime" x="0" y="24" format="{time_format}" truncate="5" size="32" align="right"/>
+        <component type="datetime" x="0" y="0" format="{date_format}" size="{date_size}" align="right"/>
+        <component type="datetime" x="0" y="{time_y}" format="{time_format}" truncate="5" size="{time_size}" align="right"/>
     </composite>'''),
 
     ("date_only", "Date Only", 200, 24, "#44aa66",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="date_only">
-        <component type="datetime" x="0" y="0" format="{date_format}" size="24" align="right"/>
+        <component type="datetime" x="0" y="0" format="{date_format}" size="{date_size}" align="right"/>
     </composite>'''),
 
     ("time_only", "Time Only", 200, 36, "#44aacc",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="time_only">
-        <component type="datetime" x="0" y="0" format="{time_format}" truncate="5" size="32" align="right"/>
+        <component type="datetime" x="0" y="0" format="{time_format}" truncate="5" size="{time_size}" align="right"/>
     </composite>'''),
 
     ("gps_info", "GPS (Full)", 280, 80, "#88aa44",
@@ -119,16 +120,16 @@ COMPONENT_DEFS = [
 
     ("gradient", "Gradient", 150, 70, "#ccaa44",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="gradient">
-        <component type="text" x="70" y="0" size="{text_size}">SLOPE(%)</component>
-        <component type="icon" x="0" y="0" file="slope-triangle.png" size="64"/>
-        <component type="metric" x="70" y="18" metric="gradient" dp="0" size="{value_font_size}" />
+        <component type="text" x="{icon_size}" y="0" size="{text_size}">SLOPE(%)</component>
+        <component type="icon" x="0" y="0" file="slope-triangle.png" size="{icon_size}"/>
+        <component type="metric" x="{icon_size}" y="{value_y}" metric="gradient" dp="0" size="{value_font_size}" />
     </composite>'''),
 
     ("altitude", "Altitude", 150, 70, "#44ccaa",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="altitude">
-        <component type="metric_unit" x="70" y="0" metric="alt" units="alt" size="{text_size}">ALT({{:~C}})</component>
-        <component type="icon" x="0" y="0" file="mountain.png" size="64"/>
-        <component type="metric" x="70" y="18" metric="alt" units="alt" dp="0" size="{value_font_size}" />
+        <component type="metric_unit" x="{icon_size}" y="0" metric="alt" units="alt" size="{text_size}">ALT({{:~C}})</component>
+        <component type="icon" x="0" y="0" file="mountain.png" size="{icon_size}"/>
+        <component type="metric" x="{icon_size}" y="{value_y}" metric="alt" units="alt" dp="0" size="{value_font_size}" />
     </composite>'''),
 
     ("temperature", "Temp", 150, 70, "#cc4444",
@@ -634,6 +635,42 @@ def load_layout_xml(xml_path: Path, components: list[OverlayComponent]):
             comp.enabled = False
 
 
+def _auto_font_sizes(comp: OverlayComponent) -> dict:
+    """Derive font sizes from component dimensions for text-based components.
+
+    Returns a dict of template variable overrides. Components that don't
+    have scalable text return an empty dict, preserving manual settings.
+    """
+    h = comp.height
+    w = comp.width
+    name = comp.name
+
+    if name == "big_mph":
+        # Speed number fills the component height; unit label is small
+        return {"speed_font_size": h, "text_size": max(8, h // 10)}
+    elif name in ("gradient", "altitude", "temperature", "cadence", "heartbeat"):
+        # Icon is ~91% of height; value text ~46%, label ~23%
+        icon_size = max(16, int(h * 0.91))
+        text_size = max(8, int(h * 0.23))
+        value_y = text_size + max(2, text_size // 4)
+        return {"value_font_size": max(12, int(h * 0.46)),
+                "text_size": text_size,
+                "icon_size": icon_size,
+                "value_y": value_y}
+    elif name == "date_and_time":
+        # Two lines: date ~33% of height, time ~67%
+        date_size = max(8, int(h * 0.33))
+        time_size = max(8, int(h * 0.67))
+        time_y = date_size + max(2, date_size // 4)  # gap after date line
+        return {"date_size": date_size, "time_size": time_size, "time_y": time_y}
+    elif name == "date_only":
+        return {"date_size": max(8, h)}
+    elif name == "time_only":
+        return {"time_size": max(8, int(h * 0.89))}
+
+    return {}
+
+
 def generate_layout_xml(components: list[OverlayComponent], map_props: dict) -> str:
     """Generate layout XML from current component positions."""
     lines = ["<layout>"]
@@ -645,7 +682,9 @@ def generate_layout_xml(components: list[OverlayComponent], map_props: dict) -> 
             fmt_vars["y"] = comp.y
             fmt_vars["w"] = comp.width
             fmt_vars["h"] = comp.height
-            # Per-component overrides
+            # Auto-derive font sizes from component dimensions
+            fmt_vars.update(_auto_font_sizes(comp))
+            # Per-component overrides (manual settings take precedence)
             for k, v in comp.custom_props.items():
                 fmt_vars[k] = v
             xml = comp.xml_template.format(**fmt_vars)
@@ -753,6 +792,8 @@ class LayoutEditorApp(tk.Tk):
         self._drag_component: Optional[OverlayComponent] = None
         self._drag_offset_x = 0
         self._drag_offset_y = 0
+        self._resize_component: Optional[OverlayComponent] = None
+        self._resize_edge: str = ""  # "br", "r", "b" etc.
 
         # Scrub debounce
         self._scrub_after_id = None
@@ -1062,10 +1103,15 @@ class LayoutEditorApp(tk.Tk):
             "jm_loc_size": self.jm_loc_size.get(),
             "date_format": self.date_format.get(),
             "time_format": self.time_format.get(),
-            # Text defaults (overridable per-component via custom_props)
+            # Text defaults (overridable per-component via custom_props and auto-sizing)
             "text_size": 16,
             "value_font_size": 32,
             "speed_font_size": 160,
+            "date_size": 16,
+            "time_size": 32,
+            "time_y": 24,
+            "icon_size": 64,
+            "value_y": 18,
             "text_rgb": "255,255,255",
             # Chart defaults
             "chart_height": 64,
@@ -1285,9 +1331,12 @@ class LayoutEditorApp(tk.Tk):
         for comp in self.components:
             comp.canvas_rect_id = None
             comp.canvas_text_id = None
+            comp.canvas_handle_ids = {}
             if not comp.enabled:
                 continue
             self._draw_component(comp)
+
+    _HANDLE_SIZE = 8  # pixels, half-size of resize handle squares
 
     def _draw_component(self, comp: OverlayComponent):
         s = self.scale_factor
@@ -1295,6 +1344,7 @@ class LayoutEditorApp(tk.Tk):
         cy = int(comp.y * s)
         cw = int(comp.width * s)
         ch = int(comp.height * s)
+        hs = self._HANDLE_SIZE
 
         rect_id = self.canvas.create_rectangle(
             cx, cy, cx + cw, cy + ch,
@@ -1309,7 +1359,33 @@ class LayoutEditorApp(tk.Tk):
         comp.canvas_rect_id = rect_id
         comp.canvas_text_id = text_id
 
-        # Bind drag events and right-click
+        # Resize handles: bottom-right corner, right edge midpoint, bottom edge midpoint
+        comp.canvas_handle_ids = {}
+        handles = {
+            "br": (cx + cw, cy + ch),
+            "r":  (cx + cw, cy + ch // 2),
+            "b":  (cx + cw // 2, cy + ch),
+        }
+        for edge, (hx, hy) in handles.items():
+            handle_id = self.canvas.create_rectangle(
+                hx - hs, hy - hs, hx + hs, hy + hs,
+                outline=comp.color, fill="white", width=1,
+                tags="overlay_comp")
+            comp.canvas_handle_ids[edge] = handle_id
+            self.canvas.tag_bind(handle_id, "<ButtonPress-1>",
+                                  lambda e, c=comp, ed=edge: self._resize_start(e, c, ed))
+            self.canvas.tag_bind(handle_id, "<B1-Motion>",
+                                  lambda e, c=comp: self._resize_motion(e, c))
+            self.canvas.tag_bind(handle_id, "<ButtonRelease-1>",
+                                  lambda e, c=comp: self._resize_end(e, c))
+            # Set cursor for resize handles
+            cursor = {"br": "bottom_right_corner", "r": "right_side", "b": "bottom_side"}[edge]
+            self.canvas.tag_bind(handle_id, "<Enter>",
+                                  lambda e, cur=cursor: self.canvas.config(cursor=cur))
+            self.canvas.tag_bind(handle_id, "<Leave>",
+                                  lambda e: self.canvas.config(cursor=""))
+
+        # Bind drag events and right-click on main rect and label
         for item_id in (rect_id, text_id):
             self.canvas.tag_bind(item_id, "<ButtonPress-1>",
                                   lambda e, c=comp: self._drag_start(e, c))
@@ -1319,6 +1395,24 @@ class LayoutEditorApp(tk.Tk):
                                   lambda e, c=comp: self._drag_end(e, c))
             self.canvas.tag_bind(item_id, "<ButtonPress-3>",
                                   lambda e, c=comp: self._component_context_menu(e, c))
+
+    def _update_handles(self, comp: OverlayComponent):
+        """Move resize handles to match current component rect."""
+        s = self.scale_factor
+        cx = int(comp.x * s)
+        cy = int(comp.y * s)
+        cw = int(comp.width * s)
+        ch = int(comp.height * s)
+        hs = self._HANDLE_SIZE
+        positions = {
+            "br": (cx + cw, cy + ch),
+            "r":  (cx + cw, cy + ch // 2),
+            "b":  (cx + cw // 2, cy + ch),
+        }
+        for edge, (hx, hy) in positions.items():
+            hid = comp.canvas_handle_ids.get(edge)
+            if hid:
+                self.canvas.coords(hid, hx - hs, hy - hs, hx + hs, hy + hs)
 
     def _drag_start(self, event, comp: OverlayComponent):
         self._drag_component = comp
@@ -1347,13 +1441,14 @@ class LayoutEditorApp(tk.Tk):
             comp.x = self._snap_value(comp.x)
             comp.y = self._snap_value(comp.y)
 
-        # Move canvas items
+        # Move canvas items and handles
         cx = int(comp.x * s)
         cy = int(comp.y * s)
         cw = int(comp.width * s)
         ch = int(comp.height * s)
         self.canvas.coords(comp.canvas_rect_id, cx, cy, cx + cw, cy + ch)
         self.canvas.coords(comp.canvas_text_id, cx + cw // 2, cy + ch // 2)
+        self._update_handles(comp)
 
     def _drag_end(self, event, comp: OverlayComponent):
         self._drag_component = None
@@ -1361,6 +1456,48 @@ class LayoutEditorApp(tk.Tk):
             video = self.videos[self.active_video_idx]
             self.status_var.set(
                 f"{comp.label}: ({comp.x}, {comp.y}) on {video.eff_width}x{video.eff_height}")
+
+    def _resize_start(self, event, comp: OverlayComponent, edge: str):
+        self._resize_component = comp
+        self._resize_edge = edge
+        # Prevent drag handler from also activating
+        self._drag_component = None
+
+    def _resize_motion(self, event, comp: OverlayComponent):
+        if self._resize_component is not comp:
+            return
+        s = self.scale_factor
+        mouse_x = event.x / s
+        mouse_y = event.y / s
+        min_size = 20
+
+        if self._resize_edge in ("r", "br"):
+            comp.width = max(min_size, int(mouse_x - comp.x))
+        if self._resize_edge in ("b", "br"):
+            comp.height = max(min_size, int(mouse_y - comp.y))
+
+        if self.snap_enabled.get():
+            comp.width = self._snap_value(comp.width)
+            comp.height = self._snap_value(comp.height)
+
+        # Update rect, label, and handles in place — no full redraw
+        cx = int(comp.x * s)
+        cy = int(comp.y * s)
+        cw = int(comp.width * s)
+        ch = int(comp.height * s)
+        self.canvas.coords(comp.canvas_rect_id, cx, cy, cx + cw, cy + ch)
+        self.canvas.coords(comp.canvas_text_id, cx + cw // 2, cy + ch // 2)
+        self._update_handles(comp)
+        self.status_var.set(
+            f"{comp.label}: ({comp.x}, {comp.y}) {comp.width}x{comp.height}")
+
+    def _resize_end(self, event, comp: OverlayComponent):
+        self._resize_component = None
+        self._resize_edge = ""
+        # Redraw once to reposition handles to new size
+        self._redraw_components()
+        self.status_var.set(
+            f"{comp.label}: ({comp.x}, {comp.y}) {comp.width}x{comp.height}")
 
     def _component_context_menu(self, event, comp: OverlayComponent):
         """Show right-click context menu for a component."""
