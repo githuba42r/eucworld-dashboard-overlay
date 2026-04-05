@@ -159,7 +159,7 @@ def layout_from_xml(xml, renderer, framemeta, font, privacy, include=lambda name
                 widget=method(child, entry=entry)
             )
 
-        @allow_attributes({"x", "y"})
+        @allow_attributes({"x", "y", "width", "height"})
         def create_composite(element, level):
             return decorate(
                 name=name_of(element),
@@ -174,13 +174,20 @@ def layout_from_xml(xml, renderer, framemeta, font, privacy, include=lambda name
 
         @allow_attributes({"x", "y", "width", "height", "opacity", "cr", "outline", "bg", "fo"})
         def create_frame(element, level):
+            frame_w = iattrib(element, "width")
+            frame_h = iattrib(element, "height")
+            if frame_w is None or frame_h is None:
+                name = element.attrib.get("name", "<unnamed>")
+                raise ValueError(
+                    f"<frame> element '{name}' requires both 'width' and 'height' attributes"
+                )
             return decorate(
                 name=name_of(element),
                 level=level,
                 widget=Translate(
                     at(element),
                     Frame(
-                        dimensions=Dimension(x=iattrib(element, "width"), y=iattrib(element, "height")),
+                        dimensions=Dimension(x=frame_w, y=frame_h),
                         opacity=fattrib(element, "opacity", d=1.0),
                         corner_radius=iattrib(element, "cr", d=0),
                         outline=rgbattr(element, "outline", None),
