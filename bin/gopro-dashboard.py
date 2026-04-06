@@ -171,10 +171,17 @@ if __name__ == "__main__":
                             start_date = start_date - duration.timedelta()
                             end_date = start_date + duration.timedelta()
 
+                        # Apply GPX time offset
+                        if start_date is not None and args.gpx_time_offset:
+                            offset_td = datetime.timedelta(seconds=args.gpx_time_offset)
+                            start_date = start_date + offset_td
+                            end_date = end_date + offset_td
+                            log(f"GPX time offset:  {args.gpx_time_offset:+.1f}s")
+
                     else:
                         generate = "overlay"
 
-                    external_file: Path = assert_file_exists(args.gpx)
+                    external_file: Path = assert_file_exists(args.xlsx or args.gpx)
                     fit_or_gpx_timeseries = load_external(external_file, units)
 
                     log(f"GPX/FIT file:     {fmtdt(fit_or_gpx_timeseries.min)} -> {fmtdt(fit_or_gpx_timeseries.max)}")
@@ -194,11 +201,18 @@ if __name__ == "__main__":
                                 "-from-gpx-and-video-not-created-with-gopro"
                             )
 
+                    # When sample_duration is set, trim the GPX window to match
+                    effective_duration = duration
+                    if args.sample_duration and duration is not None:
+                        sample_tu = timeunits(seconds=args.sample_duration)
+                        if sample_tu < duration:
+                            effective_duration = sample_tu
+
                     frame_meta = timeseries_to_framemeta(
                         fit_or_gpx_timeseries,
                         units,
                         start_date=start_date,
-                        duration=duration
+                        duration=effective_duration
                     )
                     video_duration = frame_meta.duration()
                     packets_per_second = 10
@@ -235,8 +249,8 @@ if __name__ == "__main__":
                             "/docs/bin#create-a-movie-from-gpx-and-video-not-created-with-gopro")
                         exit(1)
 
-                    if args.gpx:
-                        external_file: Path = args.gpx
+                    if args.gpx or args.xlsx:
+                        external_file: Path = args.xlsx or args.gpx
                         fit_or_gpx_timeseries = load_external(external_file, units)
                         log(f"GPX/FIT file:     {fmtdt(fit_or_gpx_timeseries.min)} -> {fmtdt(fit_or_gpx_timeseries.max)}")
                         overlap = DateRange(start=frame_meta.date_at(frame_meta.min),
@@ -272,6 +286,13 @@ if __name__ == "__main__":
                 frame_meta.process_deltas(timeseries_process.calculate_speeds(), skip=packets_per_second * 3,
                                           filter_fn=locked_2d)
                 frame_meta.process(timeseries_process.calculate_odo(), filter_fn=locked_2d)
+                frame_meta.process(timeseries_process.calculate_avg_speed(), filter_fn=locked_2d)
+                frame_meta.process(
+                    timeseries_process.calculate_avg_speed_moving(
+                        moving_threshold_mps=args.moving_threshold / 3.6
+                    ),
+                    filter_fn=locked_2d,
+                )
                 frame_meta.process_accel(timeseries_process.calculate_accel(), skip=18 * 3)
                 frame_meta.process_deltas(timeseries_process.calculate_gradient(), skip=packets_per_second * 3,
                                           filter_fn=locked_3d)  # hack
@@ -370,8 +391,16 @@ if __name__ == "__main__":
 
                 overlay = Overlay(framemeta=frame_meta, create_widgets=layout_creator)
 
+                max_frames = None
+                if args.sample_duration:
+                    max_frames = int(args.sample_duration / (0.1 * timelapse_correction))
+                    log(f"Sample mode: rendering {args.sample_duration}s ({max_frames} frames)")
+                    # Also tell ffmpeg to stop reading the input video after sample_duration
+                    ffmpeg_options.input = list(ffmpeg_options.input) + ["-t", str(args.sample_duration)]
+
                 try:
-                    progress.start(len(stepper))
+                    total = min(len(stepper), max_frames) if max_frames else len(stepper)
+                    progress.start(total)
                     with ffmpeg.generate() as writer:
 
                         if args.double_buffer:
@@ -383,6 +412,8 @@ if __name__ == "__main__":
 
                         with buffer:
                             for index, dt in enumerate(stepper.steps()):
+                                if max_frames and index >= max_frames:
+                                    break
                                 progress.update(index)
                                 draw_timer.time(lambda: buffer.draw(lambda frame: overlay.draw(dt, frame)))
 

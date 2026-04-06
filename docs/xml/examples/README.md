@@ -52,4 +52,6 @@ Auto Generated File DO NOT EDIT
 [08-translate](08-translate/README.md)
 
 [09-frame](09-frame/README.md)
+
+[08-euc-telemetry](08-euc-telemetry/README.md) - EUC World battery, voltage, current, power components
         

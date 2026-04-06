@@ -117,6 +117,9 @@ def gopro_dashboard_arguments(args=None):
 
     gpx.add_argument("--gpx", "--fit", type=pathlib.Path,
                      help="Use GPX/FIT file for location / alt / hr / cadence / temp ...")
+    gpx.add_argument("--xlsx", type=pathlib.Path,
+                     help="Use EUC World XLSX export for location / speed / battery / voltage / current / power / temp. "
+                          "Converts to GPX internally. Use instead of --gpx for EUC World data.")
     gpx.add_argument("--gpx-merge", type=MergeMode, action=EnumNameAction, default=MergeMode.EXTEND,
                      help="When using GPX/FIT file - OVERWRITE=replace GPS/alt from GoPro with GPX values, EXTEND=just use additional values from GPX/FIT file e.g. hr/cad/power")
 
@@ -130,6 +133,10 @@ def gopro_dashboard_arguments(args=None):
     only.add_argument("--video-time-end", choices=["file-created", "file-modified", "file-accessed", "video-created"],
                       help="Use file/video dates for aligning video and GPS information, only when --use-gpx-only. "
                            "'video-created' reads the creation_time embedded in the MP4 metadata.")
+    only.add_argument("--gpx-time-offset", type=float, default=0.0,
+                      help="Offset in seconds to apply to the GPX/video time alignment. "
+                           "Positive values advance the overlay (shift GPX data earlier relative to video), "
+                           "negative values retard it. e.g. --gpx-time-offset -30 if the video is 30s behind the GPX.")
 
     maps = parser.add_argument_group("Mapping", "Display of Maps")
 
@@ -167,6 +174,17 @@ def gopro_dashboard_arguments(args=None):
     gps.add_argument("--gps-bbox-lon-lat", action=BBoxArgs,
                      help="Define GPS Bounding Box, anything outside will be considered 'Not Locked' - minlon,minlat,maxlon,maxlat")
 
+    speed_analysis = parser.add_argument_group("Speed Analysis", "Speed analysis options")
+    speed_analysis.add_argument("--moving-threshold", type=float, default=2.0,
+                                help="Speed threshold in km/h below which the rider is considered stopped, "
+                                     "used for average-speed-moving calculation")
+
+    rendering = parser.add_argument_group("Rendering", "Controlling render output")
+
+    rendering.add_argument("--sample-duration", type=float, default=None,
+                           help="Only render this many seconds of video. Useful for quickly testing "
+                                "overlay layout and positioning without encoding the full video.")
+
     debugging = parser.add_argument_group("Debugging", "Controlling debugging outputs")
 
     debugging.add_argument("--show-ffmpeg", action="store_true", help="Show FFMPEG output (not usually useful)")
@@ -184,7 +202,7 @@ def gopro_dashboard_arguments(args=None):
     if (args.video_time_start or args.video_time_end) and not args.use_gpx_only:
         quit("--video-time-start/--video-time-end only applies when --use-gpx-only")
 
-    if args.use_gpx_only and not args.gpx:
+    if args.use_gpx_only and not args.gpx and not args.xlsx:
         quit("--gpx is required with --use-gpx-only")
 
     if args.use_gpx_only and not args.input and not args.overlay_size:

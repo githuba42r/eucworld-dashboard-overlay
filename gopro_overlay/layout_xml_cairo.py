@@ -45,10 +45,8 @@ def create_cairo_circuit_map(element, entry, timeseries, **kwargs) -> Widget:
 
 
 def as_reading(metric, min_value, max_value) -> Callable[[], Reading]:
-    range = max_value - min_value
-    scale = 1.0 / range
-
-    return lambda: Reading(metric() * scale)
+    range_val = max(max_value - min_value, 1)
+    return lambda: Reading((metric() - min_value) / range_val)
 
 
 def cap_from(name):

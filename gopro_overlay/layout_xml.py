@@ -25,6 +25,7 @@ from .widgets.bar import Bar
 from .widgets.chart import SimpleChart
 from .widgets.compass import Compass
 from .widgets.compass_arrow import CompassArrow
+from .widgets.heading_tape import HeadingTape
 from .widgets.gps import GPSLock
 from .widgets.gradient_bar import GradientBar
 from .widgets.map import MovingJourneyMap, Circuit
@@ -159,7 +160,7 @@ def layout_from_xml(xml, renderer, framemeta, font, privacy, include=lambda name
                 widget=method(child, entry=entry)
             )
 
-        @allow_attributes({"x", "y"})
+        @allow_attributes({"x", "y", "width", "height"})
         def create_composite(element, level):
             return decorate(
                 name=name_of(element),
@@ -174,13 +175,20 @@ def layout_from_xml(xml, renderer, framemeta, font, privacy, include=lambda name
 
         @allow_attributes({"x", "y", "width", "height", "opacity", "cr", "outline", "bg", "fo"})
         def create_frame(element, level):
+            frame_w = iattrib(element, "width")
+            frame_h = iattrib(element, "height")
+            if frame_w is None or frame_h is None:
+                name = element.attrib.get("name", "<unnamed>")
+                raise ValueError(
+                    f"<frame> element '{name}' requires both 'width' and 'height' attributes"
+                )
             return decorate(
                 name=name_of(element),
                 level=level,
                 widget=Translate(
                     at(element),
                     Frame(
-                        dimensions=Dimension(x=iattrib(element, "width"), y=iattrib(element, "height")),
+                        dimensions=Dimension(x=frame_w, y=frame_h),
                         opacity=fattrib(element, "opacity", d=1.0),
                         corner_radius=iattrib(element, "cr", d=0),
                         outline=rgbattr(element, "outline", None),
@@ -293,6 +301,12 @@ def metric_accessor_from(name: str) -> Callable[[Entry], Optional[pint.Quantity]
         "gps-packet": lambda e: e.packet,
         "gps-packet-index": lambda e: e.packet_index,
         "gps-lock": lambda e: e.gpslock,
+
+        "battery": lambda e: e.battery,
+        "voltage": lambda e: e.voltage,
+        "current": lambda e: e.current,
+        "avg-speed": lambda e: e.avg_speed,
+        "avg-speed-moving": lambda e: e.avg_speed_moving,
 
         "respiration": lambda e: e.respiration,
         "gear.front": lambda e: e.gear_front,
@@ -609,6 +623,26 @@ class Widgets:
             text=rgbattr(element, "text", d=(255, 255, 255)),
             outline=rgbattr(element, "outline", d=(0, 0, 0)),
             arrow_outline=rgbattr(element, "arrow-outline", d=(0, 0, 0)),
+        )
+
+    @allow_attributes({"width", "height", "metric", "size", "tick-interval", "label-interval",
+                        "visible-range", "show-values", "bg", "fg", "marker-rgb", "opacity"})
+    def create_heading_tape(self, element: ET.Element, entry, **kwargs) -> Widget:
+        accessor = metric_accessor_from(attrib(element, "metric", d="cog"))
+        reading = lambda: nonesafe(accessor(entry()))
+        return HeadingTape(
+            width=iattrib(element, "width", d=400),
+            height=iattrib(element, "height", d=60),
+            reading=reading,
+            font=self._font(element, "size", d=16),
+            tick_interval=iattrib(element, "tick-interval", d=10),
+            label_interval=iattrib(element, "label-interval", d=30),
+            visible_range=iattrib(element, "visible-range", d=90),
+            show_values=attrib(element, "show-values", d="true").lower() in ("true", "1", "yes"),
+            bg=rgbattr(element, "bg", d=(0, 0, 0)),
+            fg=rgbattr(element, "fg", d=(255, 255, 255)),
+            marker_rgb=rgbattr(element, "marker-rgb", d=(255, 0, 0)),
+            opacity=iattrib(element, "opacity", d=180),
         )
 
     @allow_attributes({"width", "height", "metric", "units", "fill", "zero", "bar",

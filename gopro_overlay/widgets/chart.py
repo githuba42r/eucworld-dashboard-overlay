@@ -103,10 +103,11 @@ class SimpleChart(Widget):
                 chart_draw.line(points, width=2, fill=self.line)
 
             if self.font:
-                chart_draw.text((10, 4), f"{max_val:.0f}", font=self.font, fill=self.text,
-                                stroke_width=2, stroke_fill=(0, 0, 0), anchor="lt")
-                chart_draw.text((10, self.height - 10), f"{min_val:.0f}", font=self.font,
-                                fill=self.text, stroke_width=2, stroke_fill=(0, 0, 0), anchor="lb")
+                rx = size[0] - 4
+                chart_draw.text((rx, 4), f"{max_val:.0f}", font=self.font, fill=self.text,
+                                stroke_width=2, stroke_fill=(0, 0, 0), anchor="rt")
+                chart_draw.text((rx, self.height - 10), f"{min_val:.0f}", font=self.font,
+                                fill=self.text, stroke_width=2, stroke_fill=(0, 0, 0), anchor="rb")
 
         # composite cached chart body
         image.alpha_composite(self.chart_image, (0, 0))
