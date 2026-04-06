@@ -304,11 +304,13 @@ COMPONENT_DEFS = [
     ("avg_speed_bar", "Avg Speed Bar", 400, 30, "#ff9944",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="avg_speed_bar">
         <component type="bar" width="{w}" height="{h}" metric="avg-speed" units="kph" max="{gauge_max}" min="0" outline="255,255,255,128" fill="255,153,68,200"/>
+{chart_title_line}
     </composite>'''),
 
     ("avg_speed_moving_bar", "Avg Moving Bar", 400, 30, "#ffbb44",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="avg_speed_moving_bar">
         <component type="bar" width="{w}" height="{h}" metric="avg-speed-moving" units="kph" max="{gauge_max}" min="0" outline="255,255,255,128" fill="255,187,68,200"/>
+{chart_title_line}
     </composite>'''),
 
     # -- Heading tape --
@@ -1152,11 +1154,12 @@ def _auto_gauge_ranges(comp: OverlayComponent, route_ranges: dict) -> dict:
     def _round_down(val, step):
         return int(math.floor(val / step) * step)
 
-    if name == "speed_gauge" or name == "speed_bar":
+    if name in ("speed_gauge", "speed_bar", "avg_speed_gauge", "avg_speed_bar",
+                 "avg_speed_moving_gauge", "avg_speed_moving_bar"):
         max_spd = route_ranges.get("speed_max", 60)
-        return {"gauge_max": _round_up(max_spd * 1.1, 10), "gauge_min": 0}
+        return {"gauge_max": _round_up(max_spd * 1.05, 10), "gauge_min": 0}
 
-    elif name == "battery_gauge" or name == "battery_bar":
+    elif name in ("battery_gauge", "battery_bar"):
         return {"gauge_max": 100, "gauge_min": 0}
 
     elif name == "voltage_gauge":
@@ -2495,6 +2498,80 @@ COMPONENT_OPTIONS = {
             ("value_y", "Value Y Offset", "spinbox", 18, (0, 100, 2)),
             ("label_rgb", "Label Colour (R,G,B)", "colour_select", "255,255,255", []),
             ("value_rgb", "Value Colour (R,G,B)", "colour_select", "255,255,255", []),
+        ],
+    },
+    "avg_speed_value": {
+        "title": "Avg Speed Display Options",
+        "fields": [
+            ("value_font_size", "Value Font Size", "spinbox", 32, (12, 96, 4)),
+            ("text_size", "Label Font Size", "spinbox", 16, (8, 48, 2)),
+            ("value_y", "Value Y Offset", "spinbox", 18, (0, 100, 2)),
+            ("label_rgb", "Label Colour (R,G,B)", "colour_select", "255,255,255", []),
+            ("value_rgb", "Value Colour (R,G,B)", "colour_select", "255,255,255", []),
+        ],
+    },
+    "avg_speed_moving_value": {
+        "title": "Avg Moving Speed Display Options",
+        "fields": [
+            ("value_font_size", "Value Font Size", "spinbox", 32, (12, 96, 4)),
+            ("text_size", "Label Font Size", "spinbox", 16, (8, 48, 2)),
+            ("value_y", "Value Y Offset", "spinbox", 18, (0, 100, 2)),
+            ("label_rgb", "Label Colour (R,G,B)", "colour_select", "255,255,255", []),
+            ("value_rgb", "Value Colour (R,G,B)", "colour_select", "255,255,255", []),
+        ],
+    },
+    "avg_speed_gauge": {
+        "title": "Avg Speed Gauge Options",
+        "fields": [
+            ("gauge_style", "Gauge Style", "combo", "cairo-gauge-round-annotated",
+             ["cairo-gauge-round-annotated", "cairo-gauge-arc-annotated", "cairo-gauge-donut", "cairo-gauge-marker"]),
+            ("gauge_size", "Size", "spinbox", 256, (64, 512, 16)),
+            ("show_title", "Show Title", "checkbox", False, []),
+            ("comp_title", "Gauge Title", "entry", "Avg Speed", []),
+            ("title_size", "Title Font Size", "spinbox", 14, (8, 32, 2)),
+            ("title_rgb", "Title Colour (R,G,B)", "colour_select", "255,255,255", []),
+            ("gauge_max", "Max Value", "spinbox", 60, (10, 300, 5)),
+            ("gauge_min", "Min Value", "spinbox", 0, (0, 0, 1)),
+            ("gauge_start", "Start Angle (°)", "spinbox", 143, (0, 360, 5)),
+            ("gauge_length", "Arc Length (°)", "spinbox", 254, (90, 360, 10)),
+            ("gauge_sectors", "Sectors", "spinbox", 6, (2, 20, 1)),
+        ],
+    },
+    "avg_speed_moving_gauge": {
+        "title": "Avg Moving Speed Gauge Options",
+        "fields": [
+            ("gauge_style", "Gauge Style", "combo", "cairo-gauge-round-annotated",
+             ["cairo-gauge-round-annotated", "cairo-gauge-arc-annotated", "cairo-gauge-donut", "cairo-gauge-marker"]),
+            ("gauge_size", "Size", "spinbox", 256, (64, 512, 16)),
+            ("show_title", "Show Title", "checkbox", False, []),
+            ("comp_title", "Gauge Title", "entry", "Avg Moving", []),
+            ("title_size", "Title Font Size", "spinbox", 14, (8, 32, 2)),
+            ("title_rgb", "Title Colour (R,G,B)", "colour_select", "255,255,255", []),
+            ("gauge_max", "Max Value", "spinbox", 60, (10, 300, 5)),
+            ("gauge_min", "Min Value", "spinbox", 0, (0, 0, 1)),
+            ("gauge_start", "Start Angle (°)", "spinbox", 143, (0, 360, 5)),
+            ("gauge_length", "Arc Length (°)", "spinbox", 254, (90, 360, 10)),
+            ("gauge_sectors", "Sectors", "spinbox", 6, (2, 20, 1)),
+        ],
+    },
+    "avg_speed_bar": {
+        "title": "Avg Speed Bar Options",
+        "fields": [
+            ("gauge_max", "Max Speed (kph)", "spinbox", 60, (20, 200, 10)),
+            ("show_title", "Show Title", "checkbox", False, []),
+            ("comp_title", "Bar Title", "entry", "Avg Speed", []),
+            ("title_size", "Title Font Size", "spinbox", 14, (8, 32, 2)),
+            ("title_rgb", "Title Colour (R,G,B)", "colour_select", "255,255,255", []),
+        ],
+    },
+    "avg_speed_moving_bar": {
+        "title": "Avg Moving Speed Bar Options",
+        "fields": [
+            ("gauge_max", "Max Speed (kph)", "spinbox", 60, (20, 200, 10)),
+            ("show_title", "Show Title", "checkbox", False, []),
+            ("comp_title", "Bar Title", "entry", "Avg Moving", []),
+            ("title_size", "Title Font Size", "spinbox", 14, (8, 32, 2)),
+            ("title_rgb", "Title Colour (R,G,B)", "colour_select", "255,255,255", []),
         ],
     },
     "speed_gauge": {
