@@ -181,7 +181,7 @@ if __name__ == "__main__":
                     else:
                         generate = "overlay"
 
-                    external_file: Path = assert_file_exists(args.gpx)
+                    external_file: Path = assert_file_exists(args.xlsx or args.gpx)
                     fit_or_gpx_timeseries = load_external(external_file, units)
 
                     log(f"GPX/FIT file:     {fmtdt(fit_or_gpx_timeseries.min)} -> {fmtdt(fit_or_gpx_timeseries.max)}")
@@ -249,8 +249,8 @@ if __name__ == "__main__":
                             "/docs/bin#create-a-movie-from-gpx-and-video-not-created-with-gopro")
                         exit(1)
 
-                    if args.gpx:
-                        external_file: Path = args.gpx
+                    if args.gpx or args.xlsx:
+                        external_file: Path = args.xlsx or args.gpx
                         fit_or_gpx_timeseries = load_external(external_file, units)
                         log(f"GPX/FIT file:     {fmtdt(fit_or_gpx_timeseries.min)} -> {fmtdt(fit_or_gpx_timeseries.max)}")
                         overlap = DateRange(start=frame_meta.date_at(frame_meta.min),

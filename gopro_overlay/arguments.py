@@ -117,6 +117,9 @@ def gopro_dashboard_arguments(args=None):
 
     gpx.add_argument("--gpx", "--fit", type=pathlib.Path,
                      help="Use GPX/FIT file for location / alt / hr / cadence / temp ...")
+    gpx.add_argument("--xlsx", type=pathlib.Path,
+                     help="Use EUC World XLSX export for location / speed / battery / voltage / current / power / temp. "
+                          "Converts to GPX internally. Use instead of --gpx for EUC World data.")
     gpx.add_argument("--gpx-merge", type=MergeMode, action=EnumNameAction, default=MergeMode.EXTEND,
                      help="When using GPX/FIT file - OVERWRITE=replace GPS/alt from GoPro with GPX values, EXTEND=just use additional values from GPX/FIT file e.g. hr/cad/power")
 
@@ -194,7 +197,7 @@ def gopro_dashboard_arguments(args=None):
     if (args.video_time_start or args.video_time_end) and not args.use_gpx_only:
         quit("--video-time-start/--video-time-end only applies when --use-gpx-only")
 
-    if args.use_gpx_only and not args.gpx:
+    if args.use_gpx_only and not args.gpx and not args.xlsx:
         quit("--gpx is required with --use-gpx-only")
 
     if args.use_gpx_only and not args.input and not args.overlay_size:

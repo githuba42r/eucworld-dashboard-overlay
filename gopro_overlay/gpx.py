@@ -10,7 +10,7 @@ from .gpmf import GPSFix
 from .point import Point
 from .timeseries import Timeseries, Entry
 
-GPX = collections.namedtuple("GPX", "time lat lon alt hr cad atemp power speed")
+GPX = collections.namedtuple("GPX", "time lat lon alt hr cad atemp power speed battery voltage current")
 
 
 def _preprocess_gpx(xml_str: str) -> str:
@@ -70,12 +70,17 @@ def fudge(gpx):
                     "hr": None,
                     "cad": None,
                     "power": None,
-                    "speed": None
+                    "speed": None,
+                    "battery": None,
+                    "voltage": None,
+                    "current": None,
                 }
                 for extension in point.extensions:
                     for element in extension.iter():
                         tag = element.tag[element.tag.find("}") + 1:]
                         if tag in ("atemp", "hr", "cad", "power", "speed"):
+                            data[tag] = float(element.text)
+                        elif tag in ("battery", "voltage", "current"):
                             data[tag] = float(element.text)
                 yield GPX(**data)
 
@@ -91,6 +96,9 @@ def with_unit(gpx, units):
         units.Quantity(gpx.atemp, units.celsius) if gpx.atemp is not None else None,
         units.Quantity(gpx.power, units.watt) if gpx.power is not None else None,
         units.Quantity(gpx.speed, units.mps) if gpx.speed is not None else None,
+        units.Quantity(gpx.battery, units.percent) if gpx.battery is not None else None,
+        units.Quantity(gpx.voltage, units.volt) if gpx.voltage is not None else None,
+        units.Quantity(gpx.current, units.ampere) if gpx.current is not None else None,
     )
 
 
@@ -124,6 +132,9 @@ def gpx_to_timeseries(gpx: List[GPX], units):
             atemp=point.atemp,
             power=point.power,
             speed=point.speed,
+            battery=point.battery,
+            voltage=point.voltage,
+            current=point.current,
             packet=units.Quantity(index),
             packet_index=units.Quantity(0),
             # we should set the gps fix or Journey.accept() will skip the point:
@@ -140,3 +151,95 @@ def gpx_to_timeseries(gpx: List[GPX], units):
 
 def load_timeseries(filepath: Path, units) -> Timeseries:
     return gpx_to_timeseries(load(filepath, units), units)
+
+
+def load_xlsx(filepath: Path, units) -> List[GPX]:
+    """Load EUC World XLSX export and return GPX-compatible point list."""
+    try:
+        import openpyxl
+    except ImportError:
+        raise ImportError("openpyxl is required for XLSX support: pip install openpyxl")
+
+    from datetime import datetime as dt_cls, timezone as tz_cls
+
+    wb = openpyxl.load_workbook(filepath, read_only=True)
+    ws = wb.active
+
+    headers = []
+    for row in ws.iter_rows(min_row=1, max_row=1, values_only=True):
+        headers = [h.strip() if h else "" for h in row]
+
+    col = {h: i for i, h in enumerate(headers)}
+
+    lat_col = col.get("GPS Latitude [°]")
+    lon_col = col.get("GPS Longitude [°]")
+    time_col = col.get("Date & Time")
+    if lat_col is None or lon_col is None or time_col is None:
+        raise IOError(f"XLSX missing required columns (GPS Latitude, GPS Longitude, Date & Time). Found: {headers}")
+
+    alt_col = col.get("GPS Altitude [m]")
+    speed_col = col.get("Speed [km/h]")
+    gps_speed_col = col.get("GPS Speed [km/h]")
+    battery_col = col.get("Battery [%]")
+    voltage_col = col.get("Voltage [V]")
+    current_col = col.get("Current [A]")
+    power_col = col.get("Power [W]")
+    temp_col = col.get("Temperature [°C]")
+
+    local_tz = dt_cls.now().astimezone().tzinfo
+
+    def safe_float(row, idx):
+        if idx is not None and idx < len(row) and row[idx] is not None:
+            try:
+                return float(row[idx])
+            except (ValueError, TypeError):
+                pass
+        return None
+
+    points = []
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        dt_val = row[time_col]
+        lat = row[lat_col]
+        lon = row[lon_col]
+        if dt_val is None or lat is None or lon is None:
+            continue
+
+        if isinstance(dt_val, dt_cls):
+            point_dt = dt_val
+        else:
+            point_dt = dt_cls.strptime(str(dt_val), "%Y-%m-%d %H:%M:%S")
+        if point_dt.tzinfo is None:
+            point_dt = point_dt.replace(tzinfo=local_tz)
+        point_dt = point_dt.astimezone(tz_cls.utc)
+
+        alt = safe_float(row, alt_col)
+        spd = safe_float(row, speed_col) or safe_float(row, gps_speed_col)
+        spd_mps = spd / 3.6 if spd is not None else None
+        battery = safe_float(row, battery_col)
+        voltage = safe_float(row, voltage_col)
+        current = safe_float(row, current_col)
+        pwr = safe_float(row, power_col)
+        temp = safe_float(row, temp_col)
+
+        points.append(GPX(
+            time=point_dt,
+            lat=float(lat),
+            lon=float(lon),
+            alt=alt,
+            hr=None,
+            cad=None,
+            atemp=temp,
+            power=pwr,
+            speed=spd_mps,
+            battery=battery,
+            voltage=voltage,
+            current=current,
+        ))
+
+    wb.close()
+
+    return [with_unit(p, units) for p in points]
+
+
+def load_xlsx_timeseries(filepath: Path, units) -> Timeseries:
+    return gpx_to_timeseries(load_xlsx(filepath, units), units)

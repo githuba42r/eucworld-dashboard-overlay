@@ -19,8 +19,10 @@ def load_external(filepath: Path, units) -> Timeseries:
         return gpx.load_timeseries(filepath, units)
     elif suffix == ".fit":
         return fit.load_timeseries(filepath, units)
+    elif suffix == ".xlsx":
+        return gpx.load_xlsx_timeseries(filepath, units)
     else:
-        fatal(f"Don't recognise filetype from {filepath} - support .gpx and .fit")
+        fatal(f"Don't recognise filetype from {filepath} - support .gpx, .fit, and .xlsx")
 
 
 @dataclasses.dataclass
