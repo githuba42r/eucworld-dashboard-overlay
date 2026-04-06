@@ -251,11 +251,13 @@ COMPONENT_DEFS = [
     ("speed_bar", "Speed Bar", 400, 30, "#ff8844",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="speed_bar">
         <component type="bar" width="{w}" height="{h}" metric="speed" units="kph" max="{gauge_max}" min="0" outline="255,255,255,128" fill="255,136,68,200"/>
+{chart_title_line}
     </composite>'''),
 
     ("battery_bar", "Battery Bar", 400, 30, "#44bb44",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="battery_bar">
         <component type="bar" width="{w}" height="{h}" metric="battery" units="percent" max="100" min="0" outline="255,255,255,128" fill="68,187,68,200"/>
+{chart_title_line}
     </composite>'''),
 
     # -- Additional maps --
@@ -2605,11 +2607,20 @@ COMPONENT_OPTIONS = {
         "title": "Speed Bar Options",
         "fields": [
             ("gauge_max", "Max Speed (kph)", "spinbox", 60, (20, 200, 10)),
+            ("show_title", "Show Title", "checkbox", False, []),
+            ("comp_title", "Bar Title", "entry", "Speed", []),
+            ("title_size", "Title Font Size", "spinbox", 14, (8, 32, 2)),
+            ("title_rgb", "Title Colour (R,G,B)", "colour_select", "255,255,255", []),
         ],
     },
     "battery_bar": {
         "title": "Battery Bar Options",
-        "fields": [],
+        "fields": [
+            ("show_title", "Show Title", "checkbox", False, []),
+            ("comp_title", "Bar Title", "entry", "Battery", []),
+            ("title_size", "Title Font Size", "spinbox", 14, (8, 32, 2)),
+            ("title_rgb", "Title Colour (R,G,B)", "colour_select", "255,255,255", []),
+        ],
     },
     "moving_journey_map": {
         "title": "Moving Journey Map Options",
