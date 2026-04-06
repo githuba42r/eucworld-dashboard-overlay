@@ -1168,7 +1168,8 @@ def _auto_gauge_ranges(comp: OverlayComponent, route_ranges: dict) -> dict:
     elif name == "power_gauge":
         p_max = route_ranges.get("power_max", 2000)
         p_min = route_ranges.get("power_min", -500)
-        return {"gauge_max": _round_up(max(p_max, 100), 100),
+        return {"gauge_style": "cairo-gauge-arc-annotated",
+                "gauge_max": _round_up(max(p_max, 100), 100),
                 "gauge_min": _round_down(min(p_min, 0), 100)}
 
     return {}
