@@ -264,6 +264,82 @@ def _parse_gpx_points(gpx_path: Path) -> list[tuple[float, float, str]]:
     return points
 
 
+def _parse_gpx_elevations(gpx_path: Path) -> list[tuple[float, float]]:
+    """Parse GPX file and return list of (seconds_from_start, elevation_metres)."""
+    import xml.etree.ElementTree as ET
+    from datetime import datetime, timezone
+    points = []
+    try:
+        tree = ET.parse(gpx_path)
+        root = tree.getroot()
+        ns = "http://www.topografix.com/GPX/1/1"
+
+        first_time = None
+        for trkpt in root.iter(f"{{{ns}}}trkpt"):
+            ele_elem = trkpt.find(f"{{{ns}}}ele")
+            time_elem = trkpt.find(f"{{{ns}}}time")
+            if ele_elem is None or time_elem is None:
+                continue
+            ele = float(ele_elem.text)
+            ts = time_elem.text.replace("Z", "+00:00")
+            dt = datetime.fromisoformat(ts)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            if first_time is None:
+                first_time = dt
+            secs = (dt - first_time).total_seconds()
+            points.append((secs, ele))
+
+        # Fall back to no-namespace parsing
+        if not points:
+            for trkpt in root.iter("trkpt"):
+                ele_elem = trkpt.find("ele")
+                time_elem = trkpt.find("time")
+                if ele_elem is None or time_elem is None:
+                    continue
+                ele = float(ele_elem.text)
+                ts = time_elem.text.replace("Z", "+00:00")
+                dt = datetime.fromisoformat(ts)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                if first_time is None:
+                    first_time = dt
+                secs = (dt - first_time).total_seconds()
+                points.append((secs, ele))
+    except Exception:
+        pass
+    return points
+
+
+def _gpx_start_time(gpx_path: Path) -> Optional[datetime]:
+    """Get the first timestamp from a GPX file as a datetime."""
+    from datetime import datetime, timezone
+    import xml.etree.ElementTree as ET
+    try:
+        tree = ET.parse(gpx_path)
+        root = tree.getroot()
+        ns = "http://www.topografix.com/GPX/1/1"
+        for trkpt in root.iter(f"{{{ns}}}trkpt"):
+            time_elem = trkpt.find(f"{{{ns}}}time")
+            if time_elem is not None:
+                ts = time_elem.text.replace("Z", "+00:00")
+                dt = datetime.fromisoformat(ts)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                return dt
+        for trkpt in root.iter("trkpt"):
+            time_elem = trkpt.find("time")
+            if time_elem is not None:
+                ts = time_elem.text.replace("Z", "+00:00")
+                dt = datetime.fromisoformat(ts)
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                return dt
+    except Exception:
+        pass
+    return None
+
+
 def _extract_gpx_first_point(gpx_path: Path) -> Optional[tuple[float, float]]:
     """Extract the first lat/lon from a GPX file."""
     points = _parse_gpx_points(gpx_path)
@@ -701,16 +777,26 @@ def generate_layout_xml(components: list[OverlayComponent], map_props: dict) -> 
 def generate_shell_script(
     videos: list[VideoEntry],
     gpx_path: Path,
-    layout_xml_path: Path,
+    layout_xml: str,
     speed_unit: str,
     font: str,
     gpu_profile: Optional[str],
     dashboard_script: Path,
     map_style: str = "osm",
     gpx_time_offset: float = 0.0,
+    sample_duration: Optional[float] = None,
 ) -> str:
-    """Generate a bash script to process all videos."""
+    """Generate a self-contained bash script with embedded layout XML."""
     lines = ["#!/usr/bin/env bash", "set -euo pipefail", ""]
+
+    # Write layout XML to a temp file and clean up on exit
+    lines.append("# Embedded layout XML")
+    lines.append('LAYOUT_XML="$(mktemp /tmp/layout-XXXXXX.xml)"')
+    lines.append('trap \'rm -f "$LAYOUT_XML"\' EXIT')
+    lines.append(f'cat > "$LAYOUT_XML" << \'__LAYOUT_EOF__\'')
+    lines.append(layout_xml)
+    lines.append("__LAYOUT_EOF__")
+    lines.append("")
 
     for video in videos:
         out_name = video.path.stem + "_overlay" + video.path.suffix
@@ -725,11 +811,13 @@ def generate_shell_script(
             f"--overlay-size {video.eff_width}x{video.eff_height}",
             f"--units-speed {speed_unit}",
             "--layout xml",
-            f'--layout-xml "{layout_xml_path}"',
+            '--layout-xml "$LAYOUT_XML"',
             f"--map-style {map_style}",
         ]
         if gpx_time_offset:
             cmd_parts.append(f"--gpx-time-offset {gpx_time_offset}")
+        if sample_duration:
+            cmd_parts.append(f"--sample-duration {sample_duration}")
         if gpu_profile:
             cmd_parts.append(f"--profile {gpu_profile}")
         cmd_parts.append(f'"{video.path}"')
@@ -780,6 +868,7 @@ class LayoutEditorApp(tk.Tk):
         self.date_format = tk.StringVar(value="%Y/%m/%d")
         self.time_format = tk.StringVar(value="%H:%M:%S.%f")
         self.gpx_time_offset = tk.DoubleVar(value=0.0)
+        self.sample_duration = tk.StringVar(value="")  # empty = full video
         self.gpu_profile = detect_gpu()
         self.use_gpu = tk.BooleanVar(value=self.gpu_profile is not None)
         self.font_path = detect_font()
@@ -824,6 +913,8 @@ class LayoutEditorApp(tk.Tk):
         menubar.add_cascade(label="File", menu=file_menu)
 
         settings_menu = tk.Menu(menubar, tearoff=0)
+        settings_menu.add_command(label="GPX/Video Time Sync...", command=self._show_sync_dialog)
+        settings_menu.add_separator()
         settings_menu.add_command(label="API Keys...", command=self._show_api_keys_dialog)
         menubar.add_cascade(label="Settings", menu=settings_menu)
 
@@ -911,10 +1002,17 @@ class LayoutEditorApp(tk.Tk):
         self.gpx_offset_entry.pack(side=tk.RIGHT, padx=(4, 0))
         self.gpx_offset_entry.bind("<Return>", self._on_gpx_offset_entry)
         self.gpx_offset_entry.bind("<FocusOut>", self._on_gpx_offset_entry)
-        gpx_offset_scale = ttk.Scale(offset_frame, from_=-120, to=120, orient=tk.HORIZONTAL,
+        gpx_offset_scale = ttk.Scale(offset_frame, from_=-3600, to=3600, orient=tk.HORIZONTAL,
                                       variable=self.gpx_time_offset,
                                       command=self._on_gpx_offset_change)
         gpx_offset_scale.pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        ttk.Label(settings_frame, text="Sample Duration (s):").pack(padx=4, pady=(4, 0), anchor=tk.W)
+        sample_frame = ttk.Frame(settings_frame)
+        sample_frame.pack(fill=tk.X, padx=4, pady=2)
+        self.sample_entry = ttk.Entry(sample_frame, textvariable=self.sample_duration, width=10)
+        self.sample_entry.pack(side=tk.LEFT)
+        ttk.Label(sample_frame, text="(blank = full)").pack(side=tk.LEFT, padx=4)
 
         gpu_text = f"GPU: {self.gpu_profile or 'not detected'}"
         ttk.Label(settings_frame, text=gpu_text).pack(padx=4, pady=(4, 0), anchor=tk.W)
@@ -947,34 +1045,9 @@ class LayoutEditorApp(tk.Tk):
                                           command=self._on_snap_size_change)
         self.snap_size_scale.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
 
-        # Map settings
-        map_frame = ttk.LabelFrame(right_frame, text="Map Settings")
-        map_frame.pack(fill=tk.X, padx=4, pady=4)
-
-        ttk.Label(map_frame, text="Map Style:").pack(padx=4, pady=(4, 0), anchor=tk.W)
-        map_style_combo = ttk.Combobox(map_frame, textvariable=self.map_style,
-                                        values=MAP_STYLES, state="readonly", width=24)
-        map_style_combo.pack(padx=4, pady=2, anchor=tk.W)
-
-        ttk.Label(map_frame, text="Map Size (px):").pack(padx=4, pady=(4, 0), anchor=tk.W)
-        size_frame = ttk.Frame(map_frame)
-        size_frame.pack(fill=tk.X, padx=4, pady=2)
-        self.map_size_label = ttk.Label(size_frame, text="256", width=4)
-        self.map_size_label.pack(side=tk.RIGHT)
-        map_size_scale = ttk.Scale(size_frame, from_=128, to=512, orient=tk.HORIZONTAL,
-                                    variable=self.map_size,
-                                    command=self._on_map_size_change)
-        map_size_scale.pack(side=tk.LEFT, fill=tk.X, expand=True)
-
-        ttk.Label(map_frame, text="Map Zoom:").pack(padx=4, pady=(4, 0), anchor=tk.W)
-        zoom_frame = ttk.Frame(map_frame)
-        zoom_frame.pack(fill=tk.X, padx=4, pady=2)
-        self.map_zoom_label = ttk.Label(zoom_frame, text="16", width=4)
-        self.map_zoom_label.pack(side=tk.RIGHT)
-        map_zoom_scale = ttk.Scale(zoom_frame, from_=10, to=20, orient=tk.HORIZONTAL,
-                                    variable=self.map_zoom,
-                                    command=self._on_map_zoom_change)
-        map_zoom_scale.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        # Hidden labels for map settings (updated by component dialogs)
+        self.map_size_label = ttk.Label(right_frame)
+        self.map_zoom_label = ttk.Label(right_frame)
 
         # Action buttons
         action_frame = ttk.LabelFrame(right_frame, text="Actions")
@@ -1173,6 +1246,16 @@ class LayoutEditorApp(tk.Tk):
         # Ensure grid is above background but below components
         self.canvas.tag_raise("snap_grid", "bg_image")
         self.canvas.tag_raise("overlay_comp", "snap_grid")
+
+    def _show_sync_dialog(self):
+        if not self.gpx_path:
+            messagebox.showinfo("Info", "Load a GPX file first.")
+            return
+        if not self.videos:
+            messagebox.showinfo("Info", "Add a video first.")
+            return
+        video = self.videos[max(0, self.active_video_idx)]
+        SyncDialog(self, video, self.gpx_path, self.gpx_time_offset)
 
     def _show_api_keys_dialog(self):
         ApiKeysDialog(self)
@@ -1589,26 +1672,33 @@ class LayoutEditorApp(tk.Tk):
         if not path:
             return
 
-        # Save layout XML alongside the script
-        xml_path = Path(path).with_suffix(".xml")
         xml = generate_layout_xml(self.components, self._get_map_props())
-        xml_path.write_text(xml)
 
         gpu = self.gpu_profile if self.use_gpu.get() else None
         script = generate_shell_script(
             videos=self.videos,
             gpx_path=self.gpx_path,
-            layout_xml_path=xml_path,
+            layout_xml=xml,
             speed_unit=self.speed_unit.get(),
             font=self.font_path,
             gpu_profile=gpu,
             dashboard_script=self._dashboard_script,
             map_style=self.map_style.get(),
             gpx_time_offset=self.gpx_time_offset.get(),
+            sample_duration=self._get_sample_duration(),
         )
         Path(path).write_text(script)
         os.chmod(path, 0o755)
         self.status_var.set(f"Script exported: {Path(path).name}")
+
+    def _get_sample_duration(self) -> Optional[float]:
+        val = self.sample_duration.get().strip()
+        if not val:
+            return None
+        try:
+            return float(val)
+        except ValueError:
+            return None
 
     def _validate_for_encoding(self) -> bool:
         if not self.gpx_path:
@@ -1628,10 +1718,11 @@ class LayoutEditorApp(tk.Tk):
         if not self._validate_for_encoding():
             return
 
-        # Save layout XML to temp location
+        # Save layout XML to temp file (cleaned up by EncodingDialog on close)
         import tempfile
-        xml_dir = tempfile.mkdtemp(prefix="gopro-layout-")
-        xml_path = Path(xml_dir) / "layout.xml"
+        fd, tmp_path = tempfile.mkstemp(prefix="gopro-layout-", suffix=".xml")
+        os.close(fd)
+        xml_path = Path(tmp_path)
         xml_path.write_text(generate_layout_xml(self.components, self._get_map_props()))
 
         EncodingDialog(self, self.videos, self.gpx_path, xml_path,
@@ -1639,7 +1730,8 @@ class LayoutEditorApp(tk.Tk):
                        self.gpu_profile if self.use_gpu.get() else None,
                        self._dashboard_script,
                        self.map_style.get(),
-                       self.gpx_time_offset.get())
+                       self.gpx_time_offset.get(),
+                       self._get_sample_duration())
 
 
 # ---------------------------------------------------------------------------
@@ -2428,6 +2520,627 @@ class ComponentOptionsDialog(tk.Toplevel):
 # ---------------------------------------------------------------------------
 # API Keys dialog
 # ---------------------------------------------------------------------------
+# GPX / Video time sync dialog
+# ---------------------------------------------------------------------------
+
+class SyncDialog(tk.Toplevel):
+    """Modal dialog for visually aligning video and GPX altitude data.
+
+    The red marker on the altitude chart tracks the video scrub position
+    automatically (using the current offset). A fine-tune slider adjusts
+    the offset so the marker can be shifted to align altitude features
+    with what is visible in the video frame.
+    """
+
+    CHART_W = 800
+    CHART_H = 200
+    PREVIEW_H = 360
+
+    def __init__(self, parent: LayoutEditorApp, video: VideoEntry,
+                 gpx_path: Path, offset_var: tk.DoubleVar):
+        super().__init__(parent)
+        self.title("GPX / Video Time Sync")
+        self.transient(parent)
+        self.grab_set()
+        self.parent_app = parent
+
+        self.video = video
+        self.gpx_path = gpx_path
+        self.offset_var = offset_var
+
+        # Parse GPX elevation data
+        self.elev_points = _parse_gpx_elevations(gpx_path)
+        if not self.elev_points:
+            messagebox.showinfo("Error", "No elevation data found in GPX file.", parent=self)
+            self.destroy()
+            return
+
+        # Calculate video start relative to GPX start
+        self.gpx_start = _gpx_start_time(gpx_path)
+        self.video_start = self._parse_video_start()
+        self.gpx_duration = self.elev_points[-1][0] if self.elev_points else 0
+        self.video_duration = video.duration_seconds
+
+        # Base offset: where the video sits on the GPX timeline without adjustment
+        if self.gpx_start and self.video_start:
+            self.video_gpx_base = (self.video_start - self.gpx_start).total_seconds()
+        else:
+            self.video_gpx_base = 0.0
+
+        # Current video scrub position (seconds into video)
+        self.video_pos = 0.0
+
+        # Working offset (the value being fine-tuned)
+        self.working_offset = offset_var.get()
+
+        # Chart zoom: visible window duration in seconds
+        self.chart_window_secs = 600.0  # default 10 minutes
+
+        self._frame_queue = queue.Queue()
+        self._scrub_after = None
+        self._resize_after = None
+        # Frame extraction sequencing: latest request wins
+        self._frame_seq = 0
+        self._frame_thread_running = False
+        self._pending_time: Optional[float] = None
+        self._seq_lock = threading.Lock()
+
+        self._build_ui()
+        self._update_zoom_label()
+        self._draw_chart_static()
+        self._update_marker()
+        self._extract_frame(0.0)
+
+    def _parse_video_start(self):
+        from datetime import datetime, timezone
+        try:
+            ts = self.video.creation_time.replace("Z", "+00:00")
+            dt = datetime.fromisoformat(ts)
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            return dt
+        except Exception:
+            return None
+
+    def _gpx_time_for_video_pos(self) -> float:
+        """GPX timeline position (seconds) for the current video frame."""
+        return self.video_gpx_base + self.working_offset + self.video_pos
+
+    # Scrolling window: show this many seconds of the GPX profile centred on the marker
+    def _build_ui(self):
+        self.geometry(f"{self.CHART_W + 40}x{self.PREVIEW_H + self.CHART_H + 320}")
+        self.resizable(True, True)
+        self.minsize(600, 500)
+
+        self._aspect = self.video.eff_width / self.video.eff_height
+
+        # -- Video preview (resizable) --
+        vid_frame = ttk.LabelFrame(self, text="Video")
+        vid_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
+
+        self.preview_w, self.preview_h = self._calc_preview_size()
+        self.video_canvas = tk.Canvas(vid_frame, bg="black")
+        self.video_canvas.pack(fill=tk.BOTH, expand=True, pady=4)
+        self.video_photo = None
+
+        vid_slider_frame = ttk.Frame(vid_frame)
+        vid_slider_frame.pack(fill=tk.X, padx=8, pady=2)
+        self.video_slider = ttk.Scale(vid_slider_frame, from_=0,
+                                       to=self.video_duration,
+                                       orient=tk.HORIZONTAL,
+                                       command=self._on_video_scrub)
+        self.video_slider.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.video_time_label = ttk.Label(vid_slider_frame, text="0:00", width=10)
+        self.video_time_label.pack(side=tk.RIGHT, padx=4)
+
+        # Playback controls
+        play_frame = ttk.Frame(vid_frame)
+        play_frame.pack(fill=tk.X, padx=8, pady=2)
+        self._play_speed = 0.0  # 0 = paused
+        self._play_after_id = None
+
+        ttk.Button(play_frame, text="<<", width=3,
+                    command=lambda: self._scrub_video(-30)).pack(side=tk.LEFT, padx=1)
+        ttk.Button(play_frame, text="<", width=3,
+                    command=lambda: self._scrub_video(-5)).pack(side=tk.LEFT, padx=1)
+        self._play_btn = ttk.Button(play_frame, text="Play 1x", width=7,
+                                     command=self._toggle_play)
+        self._play_btn.pack(side=tk.LEFT, padx=4)
+        ttk.Button(play_frame, text="2x", width=3,
+                    command=lambda: self._set_play_speed(2.0)).pack(side=tk.LEFT, padx=1)
+        ttk.Button(play_frame, text="4x", width=3,
+                    command=lambda: self._set_play_speed(4.0)).pack(side=tk.LEFT, padx=1)
+        ttk.Button(play_frame, text="8x", width=3,
+                    command=lambda: self._set_play_speed(8.0)).pack(side=tk.LEFT, padx=1)
+        ttk.Button(play_frame, text=">", width=3,
+                    command=lambda: self._scrub_video(5)).pack(side=tk.LEFT, padx=1)
+        ttk.Button(play_frame, text=">>", width=3,
+                    command=lambda: self._scrub_video(30)).pack(side=tk.LEFT, padx=1)
+
+        # -- Altitude chart (scrolling window with scrollbar) --
+        chart_frame = ttk.LabelFrame(self, text="GPX Altitude Profile  (red marker = current video position)")
+        chart_frame.pack(fill=tk.X, padx=8, pady=4)
+
+        self.chart_canvas = tk.Canvas(chart_frame, height=self.CHART_H, bg="#1a1a2e")
+        self.chart_canvas.pack(fill=tk.X, padx=8, pady=(4, 0))
+
+        # Scrollbar to pan the visible window along the GPX timeline
+        self._chart_scroll_var = tk.DoubleVar(value=0.0)
+        self.chart_scrollbar = ttk.Scale(chart_frame, from_=0, to=max(0, self.gpx_duration - self.chart_window_secs),
+                                          orient=tk.HORIZONTAL, variable=self._chart_scroll_var,
+                                          command=self._on_chart_scroll)
+        self.chart_scrollbar.pack(fill=tk.X, padx=8, pady=(0, 4))
+
+        # Chart zoom controls
+        zoom_row = ttk.Frame(chart_frame)
+        zoom_row.pack(fill=tk.X, padx=8, pady=(0, 4))
+        ttk.Label(zoom_row, text="Zoom:").pack(side=tk.LEFT, padx=(0, 4))
+        ttk.Button(zoom_row, text="-", width=3,
+                    command=self._zoom_out).pack(side=tk.LEFT, padx=1)
+        ttk.Button(zoom_row, text="+", width=3,
+                    command=self._zoom_in).pack(side=tk.LEFT, padx=1)
+        self._zoom_label = ttk.Label(zoom_row, text="", width=14)
+        self._zoom_label.pack(side=tk.LEFT, padx=4)
+        # Preset window durations (seconds)
+        for label, secs in [("30s", 30), ("2m", 120), ("10m", 600), ("30m", 1800), ("All", 0)]:
+            ttk.Button(zoom_row, text=label, width=4,
+                        command=lambda s=secs: self._set_zoom(s)).pack(side=tk.LEFT, padx=1)
+        # Track whether user is manually scrolling vs auto-follow
+        self._chart_manual_scroll = False
+
+        # -- Offset fine-tune --
+        tune_frame = ttk.LabelFrame(self, text="Fine-tune Offset")
+        tune_frame.pack(fill=tk.X, padx=8, pady=4)
+
+        slider_row = ttk.Frame(tune_frame)
+        slider_row.pack(fill=tk.X, padx=8, pady=4)
+
+        ttk.Button(slider_row, text="-1s", width=4,
+                    command=lambda: self._nudge_offset(-1)).pack(side=tk.LEFT, padx=2)
+        ttk.Button(slider_row, text="-0.1s", width=5,
+                    command=lambda: self._nudge_offset(-0.1)).pack(side=tk.LEFT, padx=2)
+
+        self.offset_slider = ttk.Scale(slider_row, from_=-3600, to=3600,
+                                        orient=tk.HORIZONTAL,
+                                        command=self._on_offset_slider)
+        self.offset_slider.set(self.working_offset)
+        self.offset_slider.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
+
+        ttk.Button(slider_row, text="+0.1s", width=5,
+                    command=lambda: self._nudge_offset(0.1)).pack(side=tk.LEFT, padx=2)
+        ttk.Button(slider_row, text="+1s", width=4,
+                    command=lambda: self._nudge_offset(1)).pack(side=tk.LEFT, padx=2)
+
+        entry_row = ttk.Frame(tune_frame)
+        entry_row.pack(fill=tk.X, padx=8, pady=(0, 4))
+
+        ttk.Label(entry_row, text="Offset (s):").pack(side=tk.LEFT, padx=4)
+        self.offset_entry = ttk.Entry(entry_row, width=8)
+        self.offset_entry.insert(0, str(self.working_offset))
+        self.offset_entry.pack(side=tk.LEFT, padx=4)
+        self.offset_entry.bind("<Return>", self._on_offset_entry)
+
+        self.offset_display = ttk.Label(entry_row, text="", font=("monospace", 11, "bold"))
+        self.offset_display.pack(side=tk.LEFT, padx=8)
+
+        self.alt_display = ttk.Label(entry_row, text="", font=("monospace", 10))
+        self.alt_display.pack(side=tk.RIGHT, padx=8)
+
+        # -- Buttons --
+        btn_frame = ttk.Frame(self)
+        btn_frame.pack(fill=tk.X, padx=8, pady=8)
+        ttk.Button(btn_frame, text="Apply", command=self._apply).pack(side=tk.RIGHT, padx=4)
+        ttk.Button(btn_frame, text="Cancel", command=self.destroy).pack(side=tk.RIGHT, padx=4)
+        ttk.Button(btn_frame, text="Reset to 0", command=self._reset_offset).pack(side=tk.LEFT, padx=4)
+
+        # Keyboard bindings for scrubbing and playback
+        self.bind("<space>", lambda e: self._toggle_play())
+        self.bind("<Left>", lambda e: self._scrub_video(-5))
+        self.bind("<Right>", lambda e: self._scrub_video(5))
+        self.bind("<Shift-Left>", lambda e: self._scrub_video(-0.5))
+        self.bind("<Shift-Right>", lambda e: self._scrub_video(0.5))
+        self.bind("<Up>", lambda e: self._nudge_offset(1))
+        self.bind("<Down>", lambda e: self._nudge_offset(-1))
+        self.bind("<Shift-Up>", lambda e: self._nudge_offset(0.1))
+        self.bind("<Shift-Down>", lambda e: self._nudge_offset(-0.1))
+        self.bind("+", lambda e: self._zoom_in())
+        self.bind("=", lambda e: self._zoom_in())
+        self.bind("-", lambda e: self._zoom_out())
+
+        # Resize handler
+        self.bind("<Configure>", self._on_resize)
+        self._last_resize_w = 0
+        self.focus_set()
+
+    def _calc_preview_size(self):
+        if self._aspect >= 1:
+            pw = min(self.CHART_W, self.video.eff_width)
+            ph = int(pw / self._aspect)
+        else:
+            ph = min(self.PREVIEW_H, self.video.eff_height)
+            pw = int(ph * self._aspect)
+        return pw, ph
+
+    def _on_resize(self, event):
+        if event.widget is not self:
+            return
+        new_w = event.width
+        if abs(new_w - self._last_resize_w) < 20:
+            return
+        self._last_resize_w = new_w
+        chart_w = self.chart_canvas.winfo_width()
+        if chart_w > 50:
+            self.CHART_W = chart_w
+        self._update_marker()
+        # Re-extract frame at new fitted size (debounced)
+        if self._resize_after:
+            self.after_cancel(self._resize_after)
+        self._resize_after = self.after(300, lambda: self._extract_frame(self.video_pos))
+
+    def _on_chart_scroll(self, value):
+        """User manually scrolled the chart scrollbar."""
+        self._chart_manual_scroll = True
+        self._update_marker()
+
+    def _zoom_in(self):
+        self._set_zoom(self.chart_window_secs / 2)
+
+    def _zoom_out(self):
+        self._set_zoom(self.chart_window_secs * 2)
+
+    def _set_zoom(self, secs: float):
+        """Set the visible chart window duration. 0 means show the whole GPX."""
+        if secs <= 0 or secs > self.gpx_duration:
+            secs = self.gpx_duration
+        secs = max(5.0, min(secs, self.gpx_duration))
+        self.chart_window_secs = secs
+        # Update scrollbar range
+        max_scroll = max(0, self.gpx_duration - secs)
+        self.chart_scrollbar.config(to=max_scroll)
+        # Re-centre on marker after zoom
+        self._chart_manual_scroll = False
+        self._update_zoom_label()
+        self._update_marker()
+
+    def _update_zoom_label(self):
+        s = self.chart_window_secs
+        if s >= 3600:
+            txt = f"{s/3600:.1f}h window"
+        elif s >= 60:
+            txt = f"{s/60:.1f}m window"
+        else:
+            txt = f"{s:.0f}s window"
+        self._zoom_label.config(text=txt)
+
+    # -- Chart drawing --
+
+    def _chart_window(self) -> tuple[float, float]:
+        """Return (win_start, win_end) in GPX seconds for the visible chart window.
+
+        When the user is scrubbing the video, auto-centres on the marker.
+        When the user drags the chart scrollbar, uses the scrollbar position.
+        """
+        if self._chart_manual_scroll:
+            win_start = float(self._chart_scroll_var.get())
+        else:
+            # Auto-centre on marker
+            centre = self._gpx_time_for_video_pos()
+            win_start = centre - self.chart_window_secs / 2
+
+        win_start = max(0, min(win_start, max(0, self.gpx_duration - self.chart_window_secs)))
+        win_end = min(win_start + self.chart_window_secs, self.gpx_duration)
+
+        # Keep scrollbar in sync
+        self._chart_scroll_var.set(win_start)
+        return win_start, win_end
+
+    def _draw_chart_static(self):
+        """Draw the altitude profile and grid for the visible window."""
+        c = self.chart_canvas
+        c.delete("all")
+        w, h = self.CHART_W, self.CHART_H
+
+        if not self.elev_points:
+            return
+
+        margin_l, margin_r, margin_t, margin_b = 50, 10, 10, 25
+        plot_w = w - margin_l - margin_r
+        plot_h = h - margin_t - margin_b
+
+        win_start, win_end = self._chart_window()
+        win_dur = max(win_end - win_start, 1)
+
+        # Elevation range for visible window
+        visible_elevs = [e for t, e in self.elev_points if win_start <= t <= win_end]
+        if not visible_elevs:
+            visible_elevs = [e for _, e in self.elev_points]
+        min_e, max_e = min(visible_elevs), max(visible_elevs)
+        range_e = max(max_e - min_e, 1)
+        # Add 5% padding
+        min_e -= range_e * 0.05
+        max_e += range_e * 0.05
+        range_e = max_e - min_e
+
+        # Store geometry for marker positioning
+        self._chart_margin_l = margin_l
+        self._chart_plot_w = plot_w
+        self._chart_margin_t = margin_t
+        self._chart_plot_h = plot_h
+        self._chart_win_start = win_start
+        self._chart_win_dur = win_dur
+        self._chart_min_e = min_e
+        self._chart_range_e = range_e
+
+        def tx(t):
+            return margin_l + ((t - win_start) / win_dur) * plot_w
+
+        def ty(e):
+            return margin_t + plot_h - ((e - min_e) / range_e) * plot_h
+
+        # Grid lines with elevation labels
+        for i in range(5):
+            y = margin_t + i * plot_h / 4
+            e = max_e - i * range_e / 4
+            c.create_line(margin_l, y, w - margin_r, y, fill="#333355", dash=(2, 4))
+            c.create_text(margin_l - 4, y, text=f"{e:.0f}m", anchor=tk.E,
+                         fill="#8888aa", font=("sans-serif", 7))
+
+        # Time labels
+        for i in range(5):
+            t = win_start + i * win_dur / 4
+            x = tx(t)
+            total_secs = int(t)
+            mins = total_secs // 60
+            secs = total_secs % 60
+            c.create_text(x, h - 5, text=f"{mins}:{secs:02d}", anchor=tk.S,
+                         fill="#8888aa", font=("sans-serif", 7))
+
+        # Altitude profile for visible window — downsample for performance
+        visible_pts = [(t, e) for t, e in self.elev_points if win_start <= t <= win_end]
+        step = max(1, len(visible_pts) // plot_w)
+        coords = []
+        for i in range(0, len(visible_pts), step):
+            t, e = visible_pts[i]
+            coords.extend([tx(t), ty(e)])
+        if len(coords) >= 4:
+            c.create_line(coords, fill="#5b7192", width=2, smooth=True)
+
+    def _update_marker(self):
+        """Redraw chart (scrolling window follows marker) and overlay the marker."""
+        # Redraw static chart centred on new position
+        self._draw_chart_static()
+
+        c = self.chart_canvas
+        gpx_t = self._gpx_time_for_video_pos()
+
+        win_start = self._chart_win_start
+        win_dur = self._chart_win_dur
+
+        def tx(t):
+            return self._chart_margin_l + ((t - win_start) / win_dur) * self._chart_plot_w
+
+        # Video window overlay
+        vid_start = self.video_gpx_base + self.working_offset
+        vid_end = vid_start + self.video_duration
+        vx1 = max(self._chart_margin_l, tx(vid_start))
+        vx2 = min(self._chart_margin_l + self._chart_plot_w, tx(vid_end))
+        if vx2 > vx1:
+            c.create_rectangle(vx1, self._chart_margin_t, vx2,
+                              self._chart_margin_t + self._chart_plot_h,
+                              fill="#2244aa", stipple="gray12", outline="#4466cc",
+                              tags="video_window")
+            c.tag_lower("video_window")
+
+        # Red marker line at current GPX position
+        if win_start <= gpx_t <= win_start + win_dur:
+            x = tx(gpx_t)
+            c.create_line(x, self._chart_margin_t, x,
+                         self._chart_margin_t + self._chart_plot_h,
+                         fill="#ff4444", width=2, tags="marker")
+
+            alt = self._alt_at_time(gpx_t)
+            if alt is not None:
+                y = self._chart_margin_t + self._chart_plot_h - \
+                    ((alt - self._chart_min_e) / self._chart_range_e) * self._chart_plot_h
+                c.create_oval(x - 5, y - 5, x + 5, y + 5, fill="#ff4444",
+                             outline="white", width=1, tags="marker")
+                self.alt_display.config(text=f"Alt: {alt:.1f}m  |  GPX pos: {self._fmt_time(gpx_t)}")
+            else:
+                self.alt_display.config(text=f"GPX pos: {self._fmt_time(gpx_t)}")
+        else:
+            self.alt_display.config(text="(marker outside GPX range)")
+
+        self.offset_display.config(text=f"Offset: {self.working_offset:+.1f}s")
+
+    def _alt_at_time(self, t: float) -> Optional[float]:
+        """Interpolate altitude at a given GPX time."""
+        if not self.elev_points:
+            return None
+        if t <= self.elev_points[0][0]:
+            return self.elev_points[0][1]
+        if t >= self.elev_points[-1][0]:
+            return self.elev_points[-1][1]
+        lo, hi = 0, len(self.elev_points) - 1
+        while hi - lo > 1:
+            mid = (lo + hi) // 2
+            if self.elev_points[mid][0] <= t:
+                lo = mid
+            else:
+                hi = mid
+        t0, e0 = self.elev_points[lo]
+        t1, e1 = self.elev_points[hi]
+        if t1 == t0:
+            return e0
+        frac = (t - t0) / (t1 - t0)
+        return e0 + frac * (e1 - e0)
+
+    # -- Event handlers --
+
+    def _scrub_video(self, delta: float):
+        """Scrub the video by delta seconds."""
+        self._stop_play()
+        new_t = max(0, min(self.video_duration, self.video_pos + delta))
+        self.video_slider.set(new_t)
+        # Slider callback handles the rest
+
+    def _toggle_play(self):
+        """Toggle play/pause at 1x speed."""
+        if self._play_speed > 0:
+            self._stop_play()
+        else:
+            self._set_play_speed(1.0)
+
+    def _set_play_speed(self, speed: float):
+        """Start or change playback speed."""
+        self._play_speed = speed
+        self._play_btn.config(text=f"Pause" if speed > 0 else "Play 1x")
+        if self._play_after_id is None:
+            self._play_tick()
+
+    def _stop_play(self):
+        self._play_speed = 0.0
+        self._play_btn.config(text="Play 1x")
+        if self._play_after_id:
+            self.after_cancel(self._play_after_id)
+            self._play_after_id = None
+
+    def _play_tick(self):
+        """Advance the video by one tick at the current play speed."""
+        if self._play_speed <= 0:
+            self._play_after_id = None
+            return
+        # Advance by speed * tick_interval
+        tick_ms = 200  # update every 200ms
+        delta = self._play_speed * (tick_ms / 1000.0)
+        new_t = self.video_pos + delta
+        if new_t >= self.video_duration:
+            self._stop_play()
+            return
+        self.video_slider.set(new_t)
+        self._play_after_id = self.after(tick_ms, self._play_tick)
+
+    def _on_video_scrub(self, value):
+        t = float(value)
+        self.video_pos = t
+        self.video_time_label.config(text=self._fmt_time(t))
+
+        # Video scrub resets manual scroll so chart follows
+        self._chart_manual_scroll = False
+
+        # Request frame immediately; worker coalesces rapid requests
+        self._extract_frame(t)
+
+        # Marker follows the video position
+        self._update_marker()
+
+    def _on_offset_slider(self, value):
+        self.working_offset = round(float(value), 1)
+        self.offset_entry.delete(0, tk.END)
+        self.offset_entry.insert(0, str(self.working_offset))
+        self._chart_manual_scroll = False
+        self._update_marker()
+
+    def _on_offset_entry(self, event=None):
+        try:
+            v = float(self.offset_entry.get())
+            self.working_offset = v
+            self.offset_slider.set(v)
+            self._update_marker()
+        except ValueError:
+            pass
+
+    def _nudge_offset(self, delta: float):
+        self.working_offset = round(self.working_offset + delta, 1)
+        self.offset_slider.set(self.working_offset)
+        self.offset_entry.delete(0, tk.END)
+        self.offset_entry.insert(0, str(self.working_offset))
+        self._chart_manual_scroll = False  # re-centre chart on marker
+        self._update_marker()
+
+    def _reset_offset(self):
+        self._nudge_offset(-self.working_offset)
+
+    def _fit_size(self) -> tuple[int, int]:
+        """Calculate frame size that fits the canvas while preserving aspect ratio."""
+        cw = self.video_canvas.winfo_width()
+        ch = self.video_canvas.winfo_height()
+        if cw < 50 or ch < 50:
+            return self.preview_w, self.preview_h
+        # Fit within canvas bounds
+        if cw / ch > self._aspect:
+            # Canvas is wider than video — height-limited
+            ph = ch
+            pw = int(ch * self._aspect)
+        else:
+            # Canvas is taller than video — width-limited
+            pw = cw
+            ph = int(cw / self._aspect)
+        return max(2, pw), max(2, ph)
+
+    def _extract_frame(self, time_seconds: float):
+        """Request a frame at the given time. Always renders the most recent request."""
+        with self._seq_lock:
+            self._pending_time = time_seconds
+            if self._frame_thread_running:
+                # Worker will pick up the new time when current extraction finishes
+                return
+            self._frame_thread_running = True
+
+        threading.Thread(target=self._frame_worker, daemon=True).start()
+        self._poll_frame()
+
+    def _frame_worker(self):
+        """Single worker: pulls latest pending time and extracts until idle."""
+        while True:
+            with self._seq_lock:
+                t = self._pending_time
+                if t is None:
+                    self._frame_thread_running = False
+                    return
+                self._pending_time = None
+
+            pw, ph = self._fit_size()
+            img = extract_frame(self.video.path, t, pw, ph)
+            self._frame_queue.put(img)
+
+    def _poll_frame(self):
+        drained = None
+        # Drain the queue and keep only the most recent frame
+        try:
+            while True:
+                drained = self._frame_queue.get_nowait()
+        except queue.Empty:
+            pass
+
+        if drained is not None:
+            self.video_photo = ImageTk.PhotoImage(drained)
+            self.video_canvas.delete("all")
+            cx = self.video_canvas.winfo_width() // 2
+            cy = self.video_canvas.winfo_height() // 2
+            self.video_canvas.create_image(cx, cy, anchor=tk.CENTER, image=self.video_photo)
+
+        # Keep polling while worker is running or more pending
+        with self._seq_lock:
+            still_active = self._frame_thread_running or self._pending_time is not None
+        if still_active:
+            self.after(30, self._poll_frame)
+
+    def _apply(self):
+        self._stop_play()
+        self.offset_var.set(round(self.working_offset, 1))
+        self.parent_app.gpx_offset_entry.delete(0, tk.END)
+        self.parent_app.gpx_offset_entry.insert(0, str(round(self.working_offset, 1)))
+        self.destroy()
+
+    @staticmethod
+    def _fmt_time(seconds: float) -> str:
+        m = int(abs(seconds)) // 60
+        s = abs(seconds) % 60
+        sign = "-" if seconds < 0 else ""
+        return f"{sign}{m}:{int(s):02d}.{int(s * 10) % 10}"
+
+
+# ---------------------------------------------------------------------------
 
 class ApiKeysDialog(tk.Toplevel):
     """Modal dialog for viewing and editing map API keys."""
@@ -2656,10 +3369,11 @@ class EncodingDialog(tk.Toplevel):
     def __init__(self, parent, videos: list[VideoEntry], gpx_path: Path,
                  layout_xml_path: Path, speed_unit: str, font: str,
                  gpu_profile: Optional[str], dashboard_script: Path,
-                 map_style: str = "osm", gpx_time_offset: float = 0.0):
+                 map_style: str = "osm", gpx_time_offset: float = 0.0,
+                 sample_duration: Optional[float] = None):
         super().__init__(parent)
         self.title("Encoding Progress")
-        self.geometry("600x400")
+        self.geometry("1800x800")
         self.transient(parent)
 
         self.videos = videos
@@ -2671,6 +3385,7 @@ class EncodingDialog(tk.Toplevel):
         self.dashboard_script = dashboard_script
         self.map_style = map_style
         self.gpx_time_offset = gpx_time_offset
+        self.sample_duration = sample_duration
         self.process: Optional[subprocess.Popen] = None
         self.cancelled = False
 
@@ -2681,16 +3396,16 @@ class EncodingDialog(tk.Toplevel):
         ttk.Label(self, text="Encoding Videos", font=("sans-serif", 14, "bold")).pack(pady=8)
 
         self.overall_label = ttk.Label(self, text="Preparing...")
-        self.overall_label.pack(padx=16, pady=4, anchor=tk.W)
-
-        self.overall_progress = ttk.Progressbar(self, mode="determinate", length=550)
-        self.overall_progress.pack(padx=16, pady=4)
+        self.overall_progress = ttk.Progressbar(self, mode="determinate")
+        if len(self.videos) > 1:
+            self.overall_label.pack(padx=16, pady=4, anchor=tk.W)
+            self.overall_progress.pack(fill=tk.X, padx=16, pady=4)
 
         self.current_label = ttk.Label(self, text="")
         self.current_label.pack(padx=16, pady=4, anchor=tk.W)
 
-        self.current_progress = ttk.Progressbar(self, mode="determinate", length=550)
-        self.current_progress.pack(padx=16, pady=4)
+        self.current_progress = ttk.Progressbar(self, mode="determinate")
+        self.current_progress.pack(fill=tk.X, padx=16, pady=4)
 
         # Log output
         self.log_text = tk.Text(self, height=10, state=tk.DISABLED, bg="#1a1a1a", fg="#cccccc",
@@ -2754,6 +3469,8 @@ class EncodingDialog(tk.Toplevel):
         ]
         if self.gpx_time_offset:
             cmd.extend(["--gpx-time-offset", str(self.gpx_time_offset)])
+        if self.sample_duration:
+            cmd.extend(["--sample-duration", str(self.sample_duration)])
         if self.gpu_profile:
             cmd.extend(["--profile", self.gpu_profile])
         cmd.extend([str(video.path), str(out_path)])
@@ -2806,6 +3523,7 @@ class EncodingDialog(tk.Toplevel):
         self.cancel_btn.config(state=tk.DISABLED)
 
     def _encoding_complete(self):
+        self._cleanup_layout_xml()
         self.cancel_btn.config(state=tk.DISABLED)
         self.close_btn.config(state=tk.NORMAL)
         if not self.cancelled:
@@ -2813,6 +3531,13 @@ class EncodingDialog(tk.Toplevel):
             self.current_label.config(text="Complete!")
         else:
             self.current_label.config(text="Cancelled.")
+
+    def _cleanup_layout_xml(self):
+        try:
+            if self.layout_xml_path and self.layout_xml_path.exists():
+                self.layout_xml_path.unlink()
+        except Exception:
+            pass
 
     def _ui_update(self, func):
         """Schedule a function to run on the main UI thread."""

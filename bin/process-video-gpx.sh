@@ -30,6 +30,7 @@ FORCE_NO_GPU=false
 BATCH_MODE=false
 SHOW_FFMPEG=false
 GPX_TIME_OFFSET=""
+SAMPLE_DURATION=""
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 info() { echo ":: $*"; }
@@ -53,6 +54,7 @@ while [[ $# -gt 0 ]]; do
         --no-gpu)       FORCE_NO_GPU=true; shift ;;
         --show-ffmpeg)  SHOW_FFMPEG=true; shift ;;
         --gpx-time-offset) shift; GPX_TIME_OFFSET="$1"; shift ;;
+        --sample-duration) shift; SAMPLE_DURATION="$1"; shift ;;
         -*)             die "Unknown option: $1" ;;
         *)              POSITIONAL+=("$1"); shift ;;
     esac
@@ -274,6 +276,11 @@ process_video() {
     # Add GPX time offset if specified
     if [[ -n "$GPX_TIME_OFFSET" ]]; then
         cmd_args+=("--gpx-time-offset" "$GPX_TIME_OFFSET")
+    fi
+
+    # Add sample duration for testing
+    if [[ -n "$SAMPLE_DURATION" ]]; then
+        cmd_args+=("--sample-duration" "$SAMPLE_DURATION")
     fi
 
     # Add GPU profile if available
