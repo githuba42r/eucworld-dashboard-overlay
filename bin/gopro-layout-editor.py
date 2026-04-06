@@ -66,8 +66,8 @@ class OverlayComponent:
 COMPONENT_DEFS = [
     ("date_and_time", "Date + Time", 200, 60, "#44aa88",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="date_and_time">
-        <component type="datetime" x="0" y="0" format="{date_format}" size="{date_size}" align="right"/>
-        <component type="datetime" x="0" y="{time_y}" format="{time_format}" truncate="5" size="{time_size}" align="right"/>
+        <component type="datetime" x="0" y="0" format="{date_format}" size="{date_size}" align="left"/>
+        <component type="datetime" x="0" y="{time_y}" format="{time_format}" truncate="5" size="{time_size}" align="left"/>
     </composite>'''),
 
     ("date_only", "Date Only", 200, 24, "#44aa66",
