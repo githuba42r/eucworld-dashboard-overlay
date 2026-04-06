@@ -1021,7 +1021,7 @@ def load_layout_xml(xml_path: Path, components: list[OverlayComponent]):
                 data.setdefault("custom_props", {})["text_size"] = int(child.get("size"))
 
             # Title text content
-            if child_type == "text" and child.text and child.get("align") == "center":
+            if child_type == "text" and child.text and child.get("align") in ("center", "centre"):
                 data.setdefault("custom_props", {})["comp_title"] = child.text
                 data.setdefault("custom_props", {})["show_title"] = "true"
                 if child.get("size"):
@@ -1241,7 +1241,7 @@ def generate_layout_xml(components: list[OverlayComponent], map_props: dict,
                 tx = fmt_vars.get("title_x", 128)
                 tgy = fmt_vars.get("title_gauge_y", 200)
                 fmt_vars["chart_title_line"] = f'        <component type="text" x="4" y="2" size="{ts}" rgb="{tr}">{title}</component>'
-                fmt_vars["gauge_title_line"] = f'        <component type="text" x="{tx}" y="{tgy}" size="{ts}" rgb="{tr}" align="center">{title}</component>'
+                fmt_vars["gauge_title_line"] = f'        <component type="text" x="{tx}" y="{tgy}" size="{ts}" rgb="{tr}" align="centre">{title}</component>'
             else:
                 fmt_vars["chart_title_line"] = ""
                 fmt_vars["gauge_title_line"] = ""
