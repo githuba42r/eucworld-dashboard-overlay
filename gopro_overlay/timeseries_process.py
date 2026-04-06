@@ -113,6 +113,49 @@ def filter_locked():
     return accept
 
 
+def calculate_avg_speed():
+    total_dist = [units.Quantity(0.0, units.m)]
+    first_dt = [None]
+
+    def accept(e):
+        if first_dt[0] is None:
+            first_dt[0] = e.dt
+        if e.dist is not None:
+            total_dist[0] += e.dist
+        elapsed = (e.dt - first_dt[0]).total_seconds()
+        if elapsed > 0:
+            avg = total_dist[0] / units.Quantity(elapsed, units.seconds)
+        else:
+            avg = units.Quantity(0, units.mps)
+        return {"avg_speed": avg}
+
+    return accept
+
+
+def calculate_avg_speed_moving(moving_threshold_mps=2.0 / 3.6):
+    total_dist = [units.Quantity(0.0, units.m)]
+    moving_time = [0.0]
+    last_dt = [None]
+    threshold = units.Quantity(moving_threshold_mps, units.mps)
+
+    def accept(e):
+        speed = e.speed if e.speed is not None else e.cspeed
+        if last_dt[0] is not None and speed is not None:
+            dt_seconds = (e.dt - last_dt[0]).total_seconds()
+            if speed >= threshold:
+                moving_time[0] += dt_seconds
+        last_dt[0] = e.dt
+        if e.dist is not None:
+            total_dist[0] += e.dist
+        if moving_time[0] > 0:
+            avg = total_dist[0] / units.Quantity(moving_time[0], units.seconds)
+        else:
+            avg = units.Quantity(0, units.mps)
+        return {"avg_speed_moving": avg}
+
+    return accept
+
+
 def calculate_gradient():
     # have to move a bit to calculate decent gradient
     # this is called for frames ~2 sec apart.

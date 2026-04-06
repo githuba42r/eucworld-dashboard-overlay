@@ -264,6 +264,39 @@ COMPONENT_DEFS = [
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="msi_gauge">
         <component type="msi2" size="{gauge_size}" metric="speed" units="kph"/>
     </composite>'''),
+
+    # -- Average speed components --
+    ("avg_speed_value", "Avg Speed", 150, 70, "#ff9944",
+     '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="avg_speed_value">
+        <component type="text" x="0" y="0" size="{text_size}" rgb="{label_rgb}">AVG SPEED</component>
+        <component type="metric" x="0" y="{value_y}" metric="avg-speed" units="speed" dp="1" size="{value_font_size}" rgb="{value_rgb}" />
+    </composite>'''),
+
+    ("avg_speed_moving_value", "Avg Moving Speed", 150, 70, "#ffbb44",
+     '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="avg_speed_moving_value">
+        <component type="text" x="0" y="0" size="{text_size}" rgb="{label_rgb}">AVG MOVING</component>
+        <component type="metric" x="0" y="{value_y}" metric="avg-speed-moving" units="speed" dp="1" size="{value_font_size}" rgb="{value_rgb}" />
+    </composite>'''),
+
+    ("avg_speed_gauge", "Avg Speed Gauge", 256, 256, "#ff9944",
+     '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="avg_speed_gauge">
+        <component type="{gauge_style}" size="{gauge_size}" metric="avg-speed" units="kph" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"{gauge_colour_attrs}/>
+    </composite>'''),
+
+    ("avg_speed_moving_gauge", "Avg Moving Gauge", 256, 256, "#ffbb44",
+     '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="avg_speed_moving_gauge">
+        <component type="{gauge_style}" size="{gauge_size}" metric="avg-speed-moving" units="kph" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"{gauge_colour_attrs}/>
+    </composite>'''),
+
+    ("avg_speed_bar", "Avg Speed Bar", 400, 30, "#ff9944",
+     '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="avg_speed_bar">
+        <component type="bar" width="{w}" height="{h}" metric="avg-speed" units="kph" max="{gauge_max}" min="0" outline="255,255,255,128" fill="255,153,68,200"/>
+    </composite>'''),
+
+    ("avg_speed_moving_bar", "Avg Moving Bar", 400, 30, "#ffbb44",
+     '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="avg_speed_moving_bar">
+        <component type="bar" width="{w}" height="{h}" metric="avg-speed-moving" units="kph" max="{gauge_max}" min="0" outline="255,255,255,128" fill="255,187,68,200"/>
+    </composite>'''),
 ]
 
 MAP_STYLES = [
@@ -834,6 +867,12 @@ def default_component_positions(eff_w: int, eff_h: int) -> list[OverlayComponent
         "circuit_map": (right_x, int(600 * s)),
         "asi_gauge": (int(400 * s), int(200 * s)),
         "msi_gauge": (int(400 * s), int(200 * s)),
+        "avg_speed_value": (16, int(420 * s)),
+        "avg_speed_moving_value": (16, int(500 * s)),
+        "avg_speed_gauge": (int(400 * s), int(760 * s)),
+        "avg_speed_moving_gauge": (int(680 * s), int(760 * s)),
+        "avg_speed_bar": (16, speed_y + int(260 * s)),
+        "avg_speed_moving_bar": (16, speed_y + int(300 * s)),
     }
 
     # Default enabled/disabled
@@ -844,7 +883,10 @@ def default_component_positions(eff_w: int, eff_h: int) -> list[OverlayComponent
                  "speed_gauge", "battery_gauge", "power_gauge", "voltage_gauge",
                  "compass_display", "compass_arrow_display",
                  "speed_bar", "battery_bar",
-                 "moving_journey_map", "circuit_map", "asi_gauge", "msi_gauge"}
+                 "moving_journey_map", "circuit_map", "asi_gauge", "msi_gauge",
+                 "avg_speed_value", "avg_speed_moving_value",
+                 "avg_speed_gauge", "avg_speed_moving_gauge",
+                 "avg_speed_bar", "avg_speed_moving_bar"}
 
     components = []
     for name, label, ref_w, ref_h, color, xml_tmpl in COMPONENT_DEFS:
@@ -960,7 +1002,7 @@ def _auto_font_sizes(comp: OverlayComponent) -> dict:
 
     _gauge_names = {"speed_gauge", "battery_gauge", "power_gauge", "voltage_gauge",
                      "compass_display", "compass_arrow_display", "asi_gauge", "msi_gauge",
-                     "circuit_map"}
+                     "circuit_map", "avg_speed_gauge", "avg_speed_moving_gauge"}
     if name in _gauge_names:
         return {"gauge_size": min(w, h)}
 
@@ -968,7 +1010,8 @@ def _auto_font_sizes(comp: OverlayComponent) -> dict:
         # Speed number fills the component height; unit label is small
         return {"speed_font_size": h, "text_size": max(8, h // 10)}
     elif name in ("gradient", "altitude", "temperature", "cadence", "heartbeat",
-                   "battery_value", "voltage_value", "current_value", "power_value"):
+                   "battery_value", "voltage_value", "current_value", "power_value",
+                   "avg_speed_value", "avg_speed_moving_value"):
         # Icon is ~91% of height; value text ~46%, label ~23%
         icon_size = max(16, int(h * 0.91))
         text_size = max(8, int(h * 0.23))

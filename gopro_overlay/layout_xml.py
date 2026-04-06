@@ -304,6 +304,8 @@ def metric_accessor_from(name: str) -> Callable[[Entry], Optional[pint.Quantity]
         "battery": lambda e: e.battery,
         "voltage": lambda e: e.voltage,
         "current": lambda e: e.current,
+        "avg-speed": lambda e: e.avg_speed,
+        "avg-speed-moving": lambda e: e.avg_speed_moving,
 
         "respiration": lambda e: e.respiration,
         "gear.front": lambda e: e.gear_front,

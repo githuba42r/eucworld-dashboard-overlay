@@ -174,6 +174,11 @@ def gopro_dashboard_arguments(args=None):
     gps.add_argument("--gps-bbox-lon-lat", action=BBoxArgs,
                      help="Define GPS Bounding Box, anything outside will be considered 'Not Locked' - minlon,minlat,maxlon,maxlat")
 
+    speed_analysis = parser.add_argument_group("Speed Analysis", "Speed analysis options")
+    speed_analysis.add_argument("--moving-threshold", type=float, default=2.0,
+                                help="Speed threshold in km/h below which the rider is considered stopped, "
+                                     "used for average-speed-moving calculation")
+
     rendering = parser.add_argument_group("Rendering", "Controlling render output")
 
     rendering.add_argument("--sample-duration", type=float, default=None,
