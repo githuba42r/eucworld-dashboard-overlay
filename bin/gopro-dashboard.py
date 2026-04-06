@@ -270,6 +270,24 @@ if __name__ == "__main__":
                 if args.overlay_size:
                     dimensions = dimension_from(args.overlay_size)
 
+                # Detect video rotation for correct overlay compositing
+                video_rotation = 0
+                if args.input:
+                    try:
+                        import subprocess as _sp, json as _json
+                        _probe = _sp.run(
+                            ["ffprobe", "-v", "quiet", "-select_streams", "v:0",
+                             "-show_entries", "stream_side_data=rotation",
+                             "-of", "json", str(inputpath)],
+                            capture_output=True, text=True, timeout=10)
+                        _data = _json.loads(_probe.stdout)
+                        for stream in _data.get("streams", []):
+                            for sd in stream.get("side_data_list", []):
+                                if "rotation" in sd:
+                                    video_rotation = int(sd["rotation"])
+                    except Exception:
+                        pass
+
             if len(frame_meta) < 1:
                 fatal(f"Unable to load GoPro metadata from {inputpath}. Use --debug-metadata to see more information")
 
@@ -325,6 +343,27 @@ if __name__ == "__main__":
                     ffmpeg_options = load_ffmpeg_profile(config_loader, args.profile)
                 else:
                     ffmpeg_options = None
+
+                # For rotated videos, add transpose to the filter chain so the
+                # overlay composites onto the correctly oriented frame
+                if video_rotation != 0 and ffmpeg_options is None:
+                    from gopro_overlay.ffmpeg_overlay import FFMPEGOptions
+                    ffmpeg_options = FFMPEGOptions()
+                if video_rotation != 0 and ffmpeg_options is not None:
+                    transpose_map = {
+                        -90: "transpose=1",   # 90° clockwise
+                        90: "transpose=2",    # 90° counter-clockwise
+                        -270: "transpose=2",
+                        270: "transpose=1",
+                        180: "transpose=1,transpose=1",
+                        -180: "transpose=1,transpose=1",
+                    }
+                    tp = transpose_map.get(video_rotation)
+                    if tp:
+                        ffmpeg_options.filter_complex = f"[0:v]{tp}[rotated];[rotated][1:v]overlay"
+                        # Disable auto-rotation since we handle it manually
+                        ffmpeg_options.input = list(ffmpeg_options.input) + ["-noautorotate"]
+                        log(f"Video rotation: {video_rotation}° — applying {tp}")
 
                 if args.show_ffmpeg:
                     redirect = None
