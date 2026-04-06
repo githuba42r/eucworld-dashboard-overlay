@@ -79,7 +79,8 @@ class HeadingTape(Widget):
 
         # Background with opacity
         bg_colour = self.bg[:3] + (self.opacity,) if len(self.bg) < 4 else self.bg
-        draw.rectangle([(0, 0), (width - 1, height - 1)], fill=bg_colour, outline=self.fg, width=1)
+        outline = self.fg if self.show_border else None
+        draw.rectangle([(0, 0), (width - 1, height - 1)], fill=bg_colour, outline=outline, width=1)
 
         # Marker at bottom — upward-pointing triangle
         marker_h = max(4, int(height * 0.2))
