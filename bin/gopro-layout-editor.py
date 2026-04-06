@@ -206,22 +206,22 @@ COMPONENT_DEFS = [
     # -- Gauges --
     ("speed_gauge", "Speed Gauge", 256, 256, "#ff6644",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="speed_gauge">
-        <component type="{gauge_style}" size="{gauge_size}" metric="speed" units="kph" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"/>
+        <component type="{gauge_style}" size="{gauge_size}" metric="speed" units="kph" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}" background-rgb="{gauge_bg}" needle-rgb="{gauge_needle}" major-tick-rgb="{gauge_tick}" minor-tick-rgb="{gauge_tick}" major-ann-rgb="{gauge_ann}" minor-ann-rgb="{gauge_ann}" tick-rgb="{gauge_tick}" gauge-rgb="{gauge_fill}"/>
     </composite>'''),
 
     ("battery_gauge", "Battery Gauge", 256, 256, "#44bb44",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="battery_gauge">
-        <component type="{gauge_style}" size="{gauge_size}" metric="battery" units="percent" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"/>
+        <component type="{gauge_style}" size="{gauge_size}" metric="battery" units="percent" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}" background-rgb="{gauge_bg}" needle-rgb="{gauge_needle}" major-tick-rgb="{gauge_tick}" minor-tick-rgb="{gauge_tick}" major-ann-rgb="{gauge_ann}" minor-ann-rgb="{gauge_ann}" tick-rgb="{gauge_tick}" gauge-rgb="{gauge_fill}"/>
     </composite>'''),
 
     ("power_gauge", "Power Gauge", 256, 256, "#bb4488",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="power_gauge">
-        <component type="{gauge_style}" size="{gauge_size}" metric="power" units="watt" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"/>
+        <component type="{gauge_style}" size="{gauge_size}" metric="power" units="watt" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}" background-rgb="{gauge_bg}" needle-rgb="{gauge_needle}" major-tick-rgb="{gauge_tick}" minor-tick-rgb="{gauge_tick}" major-ann-rgb="{gauge_ann}" minor-ann-rgb="{gauge_ann}" tick-rgb="{gauge_tick}" gauge-rgb="{gauge_fill}"/>
     </composite>'''),
 
     ("voltage_gauge", "Voltage Gauge", 256, 256, "#bbbb44",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="voltage_gauge">
-        <component type="{gauge_style}" size="{gauge_size}" metric="voltage" units="volt" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"/>
+        <component type="{gauge_style}" size="{gauge_size}" metric="voltage" units="volt" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}" background-rgb="{gauge_bg}" needle-rgb="{gauge_needle}" major-tick-rgb="{gauge_tick}" minor-tick-rgb="{gauge_tick}" major-ann-rgb="{gauge_ann}" minor-ann-rgb="{gauge_ann}" tick-rgb="{gauge_tick}" gauge-rgb="{gauge_fill}"/>
     </composite>'''),
 
     ("compass_display", "Compass", 256, 256, "#6688cc",
@@ -368,6 +368,110 @@ def _parse_gpx_points(gpx_path: Path) -> list[tuple[float, float, str]]:
     except Exception:
         pass
     return points
+
+
+def _scan_route_ranges(filepath: Path) -> dict:
+    """Scan a route file (GPX or XLSX) and return min/max for key metrics.
+
+    Returns dict with keys like 'speed_max', 'battery_max', 'voltage_max', etc.
+    Values are in the source file's units (km/h for speed, native for others).
+    """
+    ranges: dict = {}
+    suffix = filepath.suffix.lower()
+
+    try:
+        if suffix == ".xlsx":
+            import openpyxl
+            wb = openpyxl.load_workbook(filepath, read_only=True)
+            ws = wb.active
+            headers = []
+            for row in ws.iter_rows(min_row=1, max_row=1, values_only=True):
+                headers = [h.strip() if h else "" for h in row]
+            col = {h: i for i, h in enumerate(headers)}
+
+            metrics = {
+                "speed": col.get("Speed [km/h]"),
+                "battery": col.get("Battery [%]"),
+                "voltage": col.get("Voltage [V]"),
+                "current": col.get("Current [A]"),
+                "power": col.get("Power [W]"),
+            }
+            vals: dict[str, list] = {k: [] for k in metrics}
+
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                for name, idx in metrics.items():
+                    if idx is not None and idx < len(row) and row[idx] is not None:
+                        try:
+                            vals[name].append(float(row[idx]))
+                        except (ValueError, TypeError):
+                            pass
+            wb.close()
+
+            for name, data in vals.items():
+                if data:
+                    ranges[f"{name}_min"] = min(data)
+                    ranges[f"{name}_max"] = max(data)
+
+        elif suffix == ".gpx":
+            import xml.etree.ElementTree as ET
+            tree = ET.parse(filepath)
+            root = tree.getroot()
+            ns = "http://www.topografix.com/GPX/1/1"
+            euc_ns = "https://euc.world/gpx/1/0"
+            tpx_ns = "http://www.garmin.com/xmlschemas/TrackPointExtension/v1"
+
+            speeds, batteries, voltages, currents, powers = [], [], [], [], []
+
+            for trkpt in root.iter(f"{{{ns}}}trkpt"):
+                # Speed from extensions or direct child
+                for elem in trkpt.iter():
+                    tag = elem.tag.split("}")[-1] if "}" in elem.tag else elem.tag
+                    if tag == "speed" and elem.text:
+                        try:
+                            speeds.append(float(elem.text))
+                        except ValueError:
+                            pass
+                    elif tag == "battery" and elem.text:
+                        try:
+                            batteries.append(float(elem.text))
+                        except ValueError:
+                            pass
+                    elif tag == "voltage" and elem.text:
+                        try:
+                            voltages.append(float(elem.text))
+                        except ValueError:
+                            pass
+                    elif tag == "current" and elem.text:
+                        try:
+                            currents.append(float(elem.text))
+                        except ValueError:
+                            pass
+                    elif tag == "power" and elem.text:
+                        try:
+                            powers.append(float(elem.text))
+                        except ValueError:
+                            pass
+
+            if speeds:
+                # GPX speeds may be m/s or km/h depending on source
+                ranges["speed_max"] = max(speeds)
+            if batteries:
+                ranges["battery_min"] = min(batteries)
+                ranges["battery_max"] = max(batteries)
+            if voltages:
+                ranges["voltage_min"] = min(voltages)
+                ranges["voltage_max"] = max(voltages)
+            if currents:
+                ranges["current_min"] = min(currents)
+                ranges["current_max"] = max(currents)
+            if powers:
+                ranges["power_min"] = min(powers)
+                ranges["power_max"] = max(powers)
+
+    except Exception:
+        pass
+
+    return ranges
 
 
 def _parse_gpx_elevations(gpx_path: Path) -> list[tuple[float, float]]:
@@ -888,8 +992,48 @@ def _auto_font_sizes(comp: OverlayComponent) -> dict:
     return {}
 
 
-def generate_layout_xml(components: list[OverlayComponent], map_props: dict) -> str:
+def _auto_gauge_ranges(comp: OverlayComponent, route_ranges: dict) -> dict:
+    """Derive gauge max/min from route data for each gauge component.
+
+    Returns template variable overrides. Only sets values not already in
+    custom_props (manual overrides take precedence).
+    """
+    import math
+    name = comp.name
+
+    def _round_up(val, step):
+        return int(math.ceil(val / step) * step)
+
+    def _round_down(val, step):
+        return int(math.floor(val / step) * step)
+
+    if name == "speed_gauge" or name == "speed_bar":
+        max_spd = route_ranges.get("speed_max", 60)
+        return {"gauge_max": _round_up(max_spd * 1.1, 10), "gauge_min": 0}
+
+    elif name == "battery_gauge" or name == "battery_bar":
+        return {"gauge_max": 100, "gauge_min": 0}
+
+    elif name == "voltage_gauge":
+        v_max = route_ranges.get("voltage_max", 100)
+        v_min = route_ranges.get("voltage_min", 60)
+        return {"gauge_max": _round_up(v_max * 1.05, 5),
+                "gauge_min": _round_down(v_min * 0.95, 5)}
+
+    elif name == "power_gauge":
+        p_max = route_ranges.get("power_max", 2000)
+        p_min = route_ranges.get("power_min", -500)
+        return {"gauge_max": _round_up(max(p_max, 100), 100),
+                "gauge_min": _round_down(min(p_min, 0), 100)}
+
+    return {}
+
+
+def generate_layout_xml(components: list[OverlayComponent], map_props: dict,
+                        route_ranges: Optional[dict] = None) -> str:
     """Generate layout XML from current component positions."""
+    if route_ranges is None:
+        route_ranges = {}
     lines = ["<layout>"]
     for comp in components:
         if comp.enabled:
@@ -901,6 +1045,8 @@ def generate_layout_xml(components: list[OverlayComponent], map_props: dict) -> 
             fmt_vars["h"] = comp.height
             # Auto-derive font sizes from component dimensions
             fmt_vars.update(_auto_font_sizes(comp))
+            # Auto-derive gauge ranges from route data
+            fmt_vars.update(_auto_gauge_ranges(comp, route_ranges))
             # Per-component overrides (manual settings take precedence)
             for k, v in comp.custom_props.items():
                 fmt_vars[k] = v
@@ -991,6 +1137,7 @@ class LayoutEditorApp(tk.Tk):
 
         self.gpx_path: Optional[Path] = None
         self.gpx_location: Optional[tuple[float, float]] = None  # (lat, lon) from GPX
+        self.route_ranges: dict = {}  # metric ranges from route data
         self.videos: list[VideoEntry] = []
         self.components: list[OverlayComponent] = []
         self.active_video_idx: int = -1
@@ -1221,6 +1368,8 @@ class LayoutEditorApp(tk.Tk):
             suffix = self.gpx_path.suffix.lower()
             type_label = {".gpx": "GPX", ".fit": "FIT", ".xlsx": "XLSX"}.get(suffix, suffix.upper())
             self.gpx_label.config(text=f"[{type_label}] {self.gpx_path.name}")
+            # Scan route data for metric ranges
+            self.route_ranges = _scan_route_ranges(self.gpx_path)
             if suffix == ".xlsx":
                 self.status_var.set(f"Route: {self.gpx_path.name} (EUC World XLSX)")
             else:
@@ -1345,14 +1494,20 @@ class LayoutEditorApp(tk.Tk):
             "chart_bg": "0,0,0,170",
             "chart_fill": "91,113,146,170",
             "chart_line": "255,255,255,170",
-            # Gauge defaults
+            # Gauge defaults — these are overridden per-component by
+            # _auto_gauge_ranges() when route data is available
             "gauge_size": 256,
             "gauge_style": "cairo-gauge-round-annotated",
-            "gauge_max": 60,
+            "gauge_max": 100,
             "gauge_min": 0,
             "gauge_start": 143,
             "gauge_length": 254,
             "gauge_sectors": 6,
+            "gauge_bg": "255,255,255,150",
+            "gauge_needle": "255,0,0",
+            "gauge_tick": "0,0,0",
+            "gauge_ann": "0,0,0",
+            "gauge_fill": "0,191,255",
             # Sub-component colour defaults
             "label_rgb": "255,255,255",
             "value_rgb": "255,255,255",
@@ -1822,7 +1977,7 @@ class LayoutEditorApp(tk.Tk):
         if not path:
             return
         try:
-            xml = generate_layout_xml(self.components, self._get_map_props())
+            xml = generate_layout_xml(self.components, self._get_map_props(), self.route_ranges)
             Path(path).write_text(xml)
             self.status_var.set(f"Layout saved: {Path(path).name}")
         except Exception as e:
@@ -1839,7 +1994,7 @@ class LayoutEditorApp(tk.Tk):
         if not path:
             return
         try:
-            xml = generate_layout_xml(self.components, self._get_map_props())
+            xml = generate_layout_xml(self.components, self._get_map_props(), self.route_ranges)
 
             gpu = self.gpu_profile if self.use_gpu.get() else None
             script = generate_shell_script(
@@ -1890,7 +2045,7 @@ class LayoutEditorApp(tk.Tk):
         # Save layout XML to temp file (cleaned up by EncodingDialog on close)
         import tempfile
         try:
-            xml = generate_layout_xml(self.components, self._get_map_props())
+            xml = generate_layout_xml(self.components, self._get_map_props(), self.route_ranges)
         except Exception as e:
             messagebox.showerror("Error", f"Failed to generate layout XML:\n{e}")
             return
@@ -2100,6 +2255,11 @@ COMPONENT_OPTIONS = {
             ("gauge_start", "Start Angle (°)", "spinbox", 143, (0, 360, 5)),
             ("gauge_length", "Arc Length (°)", "spinbox", 254, (90, 360, 10)),
             ("gauge_sectors", "Sectors", "spinbox", 6, (2, 20, 1)),
+            ("gauge_bg", "Background (R,G,B,A)", "colour_select", "255,255,255,150", []),
+            ("gauge_needle", "Needle (R,G,B)", "colour_select", "255,0,0", []),
+            ("gauge_tick", "Tick Marks (R,G,B)", "colour_select", "0,0,0", []),
+            ("gauge_ann", "Annotations (R,G,B)", "colour_select", "0,0,0", []),
+            ("gauge_fill", "Gauge Fill (R,G,B)", "colour_select", "0,191,255", []),
         ],
     },
     "battery_gauge": {
@@ -2108,11 +2268,16 @@ COMPONENT_OPTIONS = {
             ("gauge_style", "Gauge Style", "combo", "cairo-gauge-donut",
              ["cairo-gauge-donut", "cairo-gauge-round-annotated", "cairo-gauge-arc-annotated", "cairo-gauge-marker"]),
             ("gauge_size", "Size", "spinbox", 256, (64, 512, 16)),
-            ("gauge_max", "Max Value", "spinbox", 100, (50, 100, 5)),
-            ("gauge_min", "Min Value", "spinbox", 0, (0, 50, 5)),
+            ("gauge_max", "Max Value (%)", "spinbox", 100, (50, 100, 5)),
+            ("gauge_min", "Min Value (%)", "spinbox", 0, (0, 50, 5)),
             ("gauge_start", "Start Angle (°)", "spinbox", 90, (0, 360, 5)),
             ("gauge_length", "Arc Length (°)", "spinbox", 270, (90, 360, 10)),
             ("gauge_sectors", "Sectors", "spinbox", 5, (2, 20, 1)),
+            ("gauge_bg", "Background (R,G,B,A)", "colour_select", "255,255,255,150", []),
+            ("gauge_needle", "Needle (R,G,B)", "colour_select", "255,0,0", []),
+            ("gauge_tick", "Tick Marks (R,G,B)", "colour_select", "0,0,0", []),
+            ("gauge_ann", "Annotations (R,G,B)", "colour_select", "0,0,0", []),
+            ("gauge_fill", "Gauge Fill (R,G,B)", "colour_select", "0,191,255", []),
         ],
     },
     "power_gauge": {
@@ -2121,11 +2286,16 @@ COMPONENT_OPTIONS = {
             ("gauge_style", "Gauge Style", "combo", "cairo-gauge-arc-annotated",
              ["cairo-gauge-arc-annotated", "cairo-gauge-round-annotated", "cairo-gauge-donut", "cairo-gauge-marker"]),
             ("gauge_size", "Size", "spinbox", 256, (64, 512, 16)),
-            ("gauge_max", "Max Value", "spinbox", 2000, (100, 5000, 100)),
-            ("gauge_min", "Min Value", "spinbox", -500, (-2000, 0, 100)),
+            ("gauge_max", "Max Power (W)", "spinbox", 2000, (100, 10000, 100)),
+            ("gauge_min", "Min Power (W)", "spinbox", -500, (-5000, 0, 100)),
             ("gauge_start", "Start Angle (°)", "spinbox", 150, (0, 360, 5)),
             ("gauge_length", "Arc Length (°)", "spinbox", 240, (90, 360, 10)),
             ("gauge_sectors", "Sectors", "spinbox", 6, (2, 20, 1)),
+            ("gauge_bg", "Background (R,G,B,A)", "colour_select", "255,255,255,150", []),
+            ("gauge_needle", "Needle (R,G,B)", "colour_select", "255,0,0", []),
+            ("gauge_tick", "Tick Marks (R,G,B)", "colour_select", "0,0,0", []),
+            ("gauge_ann", "Annotations (R,G,B)", "colour_select", "0,0,0", []),
+            ("gauge_fill", "Gauge Fill (R,G,B)", "colour_select", "0,191,255", []),
         ],
     },
     "voltage_gauge": {
@@ -2134,11 +2304,16 @@ COMPONENT_OPTIONS = {
             ("gauge_style", "Gauge Style", "combo", "cairo-gauge-marker",
              ["cairo-gauge-marker", "cairo-gauge-round-annotated", "cairo-gauge-arc-annotated", "cairo-gauge-donut"]),
             ("gauge_size", "Size", "spinbox", 256, (64, 512, 16)),
-            ("gauge_max", "Max Value", "spinbox", 100, (48, 150, 1)),
-            ("gauge_min", "Min Value", "spinbox", 60, (30, 100, 1)),
+            ("gauge_max", "Max Voltage (V)", "spinbox", 100, (48, 150, 1)),
+            ("gauge_min", "Min Voltage (V)", "spinbox", 60, (30, 100, 1)),
             ("gauge_start", "Start Angle (°)", "spinbox", 150, (0, 360, 5)),
             ("gauge_length", "Arc Length (°)", "spinbox", 240, (90, 360, 10)),
             ("gauge_sectors", "Sectors", "spinbox", 5, (2, 20, 1)),
+            ("gauge_bg", "Background (R,G,B,A)", "colour_select", "255,255,255,150", []),
+            ("gauge_needle", "Needle (R,G,B)", "colour_select", "255,0,0", []),
+            ("gauge_tick", "Tick Marks (R,G,B)", "colour_select", "0,0,0", []),
+            ("gauge_ann", "Annotations (R,G,B)", "colour_select", "0,0,0", []),
+            ("gauge_fill", "Gauge Fill (R,G,B)", "colour_select", "0,191,255", []),
         ],
     },
     "compass_display": {
