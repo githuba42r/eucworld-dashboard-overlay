@@ -116,6 +116,7 @@ COMPONENT_DEFS = [
     ("gradient_chart", "Alt Chart", 600, 80, "#aa88cc",
      '''    <composite x="{x}" y="{y}" name="gradient_chart">
         <component type="chart" x="0" y="0" units="alt" width="{w}" height="{h}" filled="{chart_filled}" seconds="{chart_seconds}" bg="{chart_bg}" fill="{chart_fill}" line="{chart_line}"/>
+        <component type="text" x="4" y="2" size="{title_size}" rgb="{title_rgb}">{comp_title}</component>
     </composite>'''),
 
     ("gradient", "Gradient", 150, 70, "#ccaa44",
@@ -191,37 +192,44 @@ COMPONENT_DEFS = [
     ("battery_chart", "Battery Chart", 300, 80, "#44bb44",
      '''    <composite x="{x}" y="{y}" name="battery_chart">
         <component type="chart" x="0" y="0" metric="battery" units="percent" width="{w}" height="{h}" filled="true" seconds="300" bg="0,0,0,170" fill="68,187,68,170" line="255,255,255,170"/>
+        <component type="text" x="4" y="2" size="{title_size}" rgb="{title_rgb}">{comp_title}</component>
     </composite>'''),
 
     ("voltage_chart", "Voltage Chart", 300, 80, "#bbbb44",
      '''    <composite x="{x}" y="{y}" name="voltage_chart">
         <component type="chart" x="0" y="0" metric="voltage" units="volt" width="{w}" height="{h}" filled="true" seconds="300" bg="0,0,0,170" fill="187,187,68,170" line="255,255,255,170"/>
+        <component type="text" x="4" y="2" size="{title_size}" rgb="{title_rgb}">{comp_title}</component>
     </composite>'''),
 
     ("power_chart", "Power Chart", 300, 80, "#bb4488",
      '''    <composite x="{x}" y="{y}" name="power_chart">
         <component type="chart" x="0" y="0" metric="power" units="watt" width="{w}" height="{h}" filled="true" seconds="300" bg="0,0,0,170" fill="187,68,136,170" line="255,255,255,170"/>
+        <component type="text" x="4" y="2" size="{title_size}" rgb="{title_rgb}">{comp_title}</component>
     </composite>'''),
 
     # -- Gauges --
     ("speed_gauge", "Speed Gauge", 256, 256, "#ff6644",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="speed_gauge">
         <component type="{gauge_style}" size="{gauge_size}" metric="speed" units="kph" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"{gauge_colour_attrs}/>
+        <component type="text" x="{title_x}" y="{title_gauge_y}" size="{title_size}" rgb="{title_rgb}" align="center">{comp_title}</component>
     </composite>'''),
 
     ("battery_gauge", "Battery Gauge", 256, 256, "#44bb44",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="battery_gauge">
         <component type="{gauge_style}" size="{gauge_size}" metric="battery" units="percent" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"{gauge_colour_attrs}/>
+        <component type="text" x="{title_x}" y="{title_gauge_y}" size="{title_size}" rgb="{title_rgb}" align="center">{comp_title}</component>
     </composite>'''),
 
     ("power_gauge", "Power Gauge", 256, 256, "#bb4488",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="power_gauge">
         <component type="{gauge_style}" size="{gauge_size}" metric="power" units="watt" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}" arc-value-lower="{gauge_min}" arc-value-upper="0"{gauge_colour_attrs} arc-inner-rgb="{regen_colour}" arc-outer-rgb="{regen_colour}"/>
+        <component type="text" x="{title_x}" y="{title_gauge_y}" size="{title_size}" rgb="{title_rgb}" align="center">{comp_title}</component>
     </composite>'''),
 
     ("voltage_gauge", "Voltage Gauge", 256, 256, "#bbbb44",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="voltage_gauge">
         <component type="{gauge_style}" size="{gauge_size}" metric="voltage" units="volt" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"{gauge_colour_attrs}/>
+        <component type="text" x="{title_x}" y="{title_gauge_y}" size="{title_size}" rgb="{title_rgb}" align="center">{comp_title}</component>
     </composite>'''),
 
     ("compass_display", "Compass", 256, 256, "#6688cc",
@@ -262,7 +270,8 @@ COMPONENT_DEFS = [
 
     ("msi_gauge", "Motor Speed Indicator", 256, 256, "#884488",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="msi_gauge">
-        <component type="msi2" size="{gauge_size}" metric="speed" units="kph"/>
+        <component type="msi2" size="{gauge_size}" metric="speed" units="kph" green="{msi_green}" yellow="{msi_yellow}" end="{msi_end}" rotate="{msi_rotate}" textsize="{msi_textsize}"/>
+        <component type="text" x="{title_x}" y="{title_gauge_y}" size="{title_size}" rgb="{title_rgb}" align="center">{comp_title}</component>
     </composite>'''),
 
     # -- Average speed components --
@@ -281,11 +290,13 @@ COMPONENT_DEFS = [
     ("avg_speed_gauge", "Avg Speed Gauge", 256, 256, "#ff9944",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="avg_speed_gauge">
         <component type="{gauge_style}" size="{gauge_size}" metric="avg-speed" units="kph" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"{gauge_colour_attrs}/>
+        <component type="text" x="{title_x}" y="{title_gauge_y}" size="{title_size}" rgb="{title_rgb}" align="center">{comp_title}</component>
     </composite>'''),
 
     ("avg_speed_moving_gauge", "Avg Moving Gauge", 256, 256, "#ffbb44",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="avg_speed_moving_gauge">
         <component type="{gauge_style}" size="{gauge_size}" metric="avg-speed-moving" units="kph" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"{gauge_colour_attrs}/>
+        <component type="text" x="{title_x}" y="{title_gauge_y}" size="{title_size}" rgb="{title_rgb}" align="center">{comp_title}</component>
     </composite>'''),
 
     ("avg_speed_bar", "Avg Speed Bar", 400, 30, "#ff9944",
@@ -1012,7 +1023,10 @@ def _auto_font_sizes(comp: OverlayComponent) -> dict:
                      "compass_display", "compass_arrow_display", "asi_gauge", "msi_gauge",
                      "circuit_map", "avg_speed_gauge", "avg_speed_moving_gauge"}
     if name in _gauge_names:
-        return {"gauge_size": min(w, h)}
+        size = min(w, h)
+        return {"gauge_size": size,
+                "title_x": size // 2,
+                "title_gauge_y": int(size * 0.82)}
 
     if name == "big_mph":
         # Speed number fills the component height; unit label is small
@@ -1585,9 +1599,21 @@ class LayoutEditorApp(tk.Tk):
             "gauge_ann": "0,0,0",
             "gauge_fill": "0,191,255",
             "regen_colour": "68,187,68,180",
+            # MSI defaults
+            "msi_green": 0,
+            "msi_yellow": 40,
+            "msi_end": 60,
+            "msi_rotate": 180,
+            "msi_textsize": 16,
             # Sub-component colour defaults
             "label_rgb": "255,255,255",
             "value_rgb": "255,255,255",
+            # Component title defaults
+            "comp_title": "",
+            "title_size": 14,
+            "title_rgb": "255,255,255",
+            "title_x": 128,
+            "title_gauge_y": 200,
             # Heading tape defaults
             "ht_font_size": 16,
             "ht_tick_interval": 10,
@@ -2279,6 +2305,9 @@ COMPONENT_OPTIONS = {
     "gradient_chart": {
         "title": "Altitude Chart Options",
         "fields": [
+            ("comp_title", "Chart Title", "entry", "Altitude", []),
+            ("title_size", "Title Font Size", "spinbox", 14, (8, 32, 2)),
+            ("title_rgb", "Title Colour (R,G,B)", "colour_select", "255,255,255", []),
             ("chart_corner_radius", "Corner Radius", "spinbox", 0, (0, 64, 5)),
             ("chart_outline", "Border (R,G,B,A)", "colour_select", "0,0,0,0", []),
             ("chart_seconds", "Time Window (sec)", "spinbox", 300, (60, 1800, 30)),
@@ -2286,6 +2315,30 @@ COMPONENT_OPTIONS = {
             ("chart_bg", "Background (R,G,B,A)", "colour_select", "0,0,0,170", []),
             ("chart_fill", "Fill Colour (R,G,B,A)", "colour_select", "91,113,146,170", []),
             ("chart_line", "Line Colour (R,G,B,A)", "colour_select", "255,255,255,170", []),
+        ],
+    },
+    "battery_chart": {
+        "title": "Battery Chart Options",
+        "fields": [
+            ("comp_title", "Chart Title", "entry", "Battery %", []),
+            ("title_size", "Title Font Size", "spinbox", 14, (8, 32, 2)),
+            ("title_rgb", "Title Colour (R,G,B)", "colour_select", "255,255,255", []),
+        ],
+    },
+    "voltage_chart": {
+        "title": "Voltage Chart Options",
+        "fields": [
+            ("comp_title", "Chart Title", "entry", "Voltage", []),
+            ("title_size", "Title Font Size", "spinbox", 14, (8, 32, 2)),
+            ("title_rgb", "Title Colour (R,G,B)", "colour_select", "255,255,255", []),
+        ],
+    },
+    "power_chart": {
+        "title": "Power Chart Options",
+        "fields": [
+            ("comp_title", "Chart Title", "entry", "Power", []),
+            ("title_size", "Title Font Size", "spinbox", 14, (8, 32, 2)),
+            ("title_rgb", "Title Colour (R,G,B)", "colour_select", "255,255,255", []),
         ],
     },
     "battery_value": {
@@ -2334,6 +2387,9 @@ COMPONENT_OPTIONS = {
             ("gauge_style", "Gauge Style", "combo", "cairo-gauge-round-annotated",
              ["cairo-gauge-round-annotated", "cairo-gauge-arc-annotated", "cairo-gauge-donut", "cairo-gauge-marker"]),
             ("gauge_size", "Size", "spinbox", 256, (64, 512, 16)),
+            ("comp_title", "Gauge Title", "entry", "Speed", []),
+            ("title_size", "Title Font Size", "spinbox", 14, (8, 32, 2)),
+            ("title_rgb", "Title Colour (R,G,B)", "colour_select", "255,255,255", []),
             ("gauge_max", "Max Value", "spinbox", 60, (10, 300, 5)),
             ("gauge_min", "Min Value", "spinbox", 0, (-100, 100, 5)),
             ("gauge_start", "Start Angle (°)", "spinbox", 143, (0, 360, 5)),
@@ -2352,6 +2408,9 @@ COMPONENT_OPTIONS = {
             ("gauge_style", "Gauge Style", "combo", "cairo-gauge-donut",
              ["cairo-gauge-donut", "cairo-gauge-round-annotated", "cairo-gauge-arc-annotated", "cairo-gauge-marker"]),
             ("gauge_size", "Size", "spinbox", 256, (64, 512, 16)),
+            ("comp_title", "Gauge Title", "entry", "Battery", []),
+            ("title_size", "Title Font Size", "spinbox", 14, (8, 32, 2)),
+            ("title_rgb", "Title Colour (R,G,B)", "colour_select", "255,255,255", []),
             ("gauge_max", "Max Value (%)", "spinbox", 100, (50, 100, 5)),
             ("gauge_min", "Min Value (%)", "spinbox", 0, (0, 50, 5)),
             ("gauge_start", "Start Angle (°)", "spinbox", 90, (0, 360, 5)),
@@ -2370,6 +2429,9 @@ COMPONENT_OPTIONS = {
             ("gauge_style", "Gauge Style", "combo", "cairo-gauge-arc-annotated",
              ["cairo-gauge-arc-annotated", "cairo-gauge-round-annotated", "cairo-gauge-donut", "cairo-gauge-marker"]),
             ("gauge_size", "Size", "spinbox", 256, (64, 512, 16)),
+            ("comp_title", "Gauge Title", "entry", "Power", []),
+            ("title_size", "Title Font Size", "spinbox", 14, (8, 32, 2)),
+            ("title_rgb", "Title Colour (R,G,B)", "colour_select", "255,255,255", []),
             ("gauge_max", "Max Power (W)", "spinbox", 2000, (100, 10000, 100)),
             ("gauge_min", "Min Power (W)", "spinbox", -500, (-5000, 0, 100)),
             ("gauge_start", "Start Angle (°)", "spinbox", 150, (0, 360, 5)),
@@ -2389,6 +2451,9 @@ COMPONENT_OPTIONS = {
             ("gauge_style", "Gauge Style", "combo", "cairo-gauge-marker",
              ["cairo-gauge-marker", "cairo-gauge-round-annotated", "cairo-gauge-arc-annotated", "cairo-gauge-donut"]),
             ("gauge_size", "Size", "spinbox", 256, (64, 512, 16)),
+            ("comp_title", "Gauge Title", "entry", "Voltage", []),
+            ("title_size", "Title Font Size", "spinbox", 14, (8, 32, 2)),
+            ("title_rgb", "Title Colour (R,G,B)", "colour_select", "255,255,255", []),
             ("gauge_max", "Max Voltage (V)", "spinbox", 100, (48, 150, 1)),
             ("gauge_min", "Min Voltage (V)", "spinbox", 60, (30, 100, 1)),
             ("gauge_start", "Start Angle (°)", "spinbox", 150, (0, 360, 5)),
@@ -2447,6 +2512,11 @@ COMPONENT_OPTIONS = {
         "title": "Motor Speed Indicator Options",
         "fields": [
             ("gauge_size", "Size", "spinbox", 256, (64, 512, 16)),
+            ("msi_green", "Green Zone Start", "spinbox", 0, (0, 200, 5)),
+            ("msi_yellow", "Yellow Zone Start", "spinbox", 40, (0, 200, 5)),
+            ("msi_end", "Max / Redline", "spinbox", 60, (10, 300, 5)),
+            ("msi_rotate", "Rotation (°)", "spinbox", 180, (0, 360, 10)),
+            ("msi_textsize", "Text Size", "spinbox", 16, (8, 32, 2)),
         ],
     },
     "heading_tape": {
@@ -2563,7 +2633,11 @@ class ComponentOptionsDialog(tk.Toplevel):
 
                 current = self._get_current_value(field_id, default)
 
-                if widget_type == "spinbox":
+                if widget_type == "entry":
+                    var = tk.StringVar(value=current)
+                    ttk.Entry(field_row, textvariable=var, width=20).pack(side=tk.LEFT, padx=4)
+
+                elif widget_type == "spinbox":
                     from_, to_, inc = params
                     var = tk.IntVar(value=current)
                     ttk.Spinbox(field_row, from_=from_, to=to_, increment=inc,
