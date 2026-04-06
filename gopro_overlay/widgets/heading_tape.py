@@ -20,6 +20,9 @@ class HeadingTape(Widget):
         reading: Callable[[], Optional[float]],
         font: ImageFont,
         tick_interval: int = 10,
+        label_interval: int = 30,
+        visible_range: int = 90,
+        show_values: bool = True,
         bg: Tuple[int, ...] = (0, 0, 0),
         fg: Tuple[int, ...] = (255, 255, 255),
         marker_rgb: Tuple[int, ...] = (255, 0, 0),
@@ -30,6 +33,9 @@ class HeadingTape(Widget):
         self.reading = reading
         self.font = font
         self.tick_interval = tick_interval
+        self.label_interval = label_interval
+        self.visible_range = max(10, visible_range)
+        self.show_values = show_values
         self.bg = bg
         self.fg = fg
         self.marker_rgb = marker_rgb
@@ -37,30 +43,24 @@ class HeadingTape(Widget):
         self.last_reading = None
         self.image = None
 
-        # Pixels per degree — roughly 3px/deg gives a readable tape
-        self.pixels_per_degree = 3.0
-
     def _redraw_no_data(self) -> Image.Image:
         """Draw a placeholder tape when heading data is unavailable."""
         image = Image.new("RGBA", (self.width, self.height), (0, 0, 0, 0))
         draw = ImageDraw.Draw(image)
 
-        # Background with opacity
         bg_colour = self.bg[:3] + (self.opacity,) if len(self.bg) < 4 else self.bg
         draw.rectangle([(0, 0), (self.width - 1, self.height - 1)], fill=bg_colour, outline=self.fg, width=1)
-
-        # Centred dashes
         draw.text((self.width / 2, self.height / 2), "---", font=self.font, anchor="mm", fill=self.fg)
 
-        # Dimmed centre marker
+        # Dimmed upward-pointing marker at top
         dimmed = tuple(max(0, c // 2) for c in self.marker_rgb[:3])
         marker_h = max(4, int(self.height * 0.2))
         marker_half_w = max(3, marker_h // 2)
         cx = self.width // 2
         draw.polygon([
-            (cx, self.height - 1),
-            (cx - marker_half_w, self.height - 1 - marker_h),
-            (cx + marker_half_w, self.height - 1 - marker_h),
+            (cx, 0),
+            (cx - marker_half_w, marker_h),
+            (cx + marker_half_w, marker_h),
         ], fill=dimmed)
 
         return image
@@ -69,7 +69,7 @@ class HeadingTape(Widget):
         """Produce the tape image for a given heading."""
         width = self.width
         height = self.height
-        ppd = self.pixels_per_degree
+        ppd = width / self.visible_range  # pixels per degree
 
         image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
         draw = ImageDraw.Draw(image)
@@ -78,16 +78,28 @@ class HeadingTape(Widget):
         bg_colour = self.bg[:3] + (self.opacity,) if len(self.bg) < 4 else self.bg
         draw.rectangle([(0, 0), (width - 1, height - 1)], fill=bg_colour, outline=self.fg, width=1)
 
-        # Visible degree range
-        visible_degrees = width / ppd
-        start_deg = heading - visible_degrees / 2
-        end_deg = heading + visible_degrees / 2
+        # Marker at top — upward-pointing triangle
+        marker_h = max(4, int(height * 0.2))
+        marker_half_w = max(3, marker_h // 2)
+        cx = width // 2
+        draw.polygon([
+            (cx, 0),
+            (cx - marker_half_w, marker_h),
+            (cx + marker_half_w, marker_h),
+        ], fill=self.marker_rgb)
 
-        # Tick heights
-        major_tick_h = int(height * 0.5)
-        intercardinal_tick_h = int(height * 0.4)
-        numbered_tick_h = int(height * 0.35)
-        minor_tick_h = int(height * 0.15)
+        # Ticks and labels drawn below the marker
+        tape_top = marker_h + 2
+        tape_h = height - tape_top
+
+        # Tick heights relative to tape area
+        major_tick_h = int(tape_h * 0.45)
+        minor_tick_h = int(tape_h * 0.2)
+
+        # Visible degree range
+        half_range = self.visible_range / 2
+        start_deg = heading - half_range
+        end_deg = heading + half_range
 
         floor_start = int(math.floor(start_deg))
         ceil_end = int(math.ceil(end_deg))
@@ -99,45 +111,35 @@ class HeadingTape(Widget):
 
             norm = deg % 360
 
-            # Determine tick type and label
-            label = None
-            if norm in LABELS and norm % 90 == 0:
-                # Cardinal direction
+            # Determine what to draw at this degree
+            is_cardinal = norm in LABELS and norm % 90 == 0
+            is_intercardinal = norm in LABELS and norm % 90 != 0
+            is_label_tick = (self.label_interval > 0 and self.tick_interval > 0
+                            and norm % self.label_interval == 0)
+            is_minor_tick = (self.tick_interval > 0 and norm % self.tick_interval == 0)
+
+            if is_cardinal or is_intercardinal:
                 tick_h = major_tick_h
-                label = LABELS[norm]
-            elif norm in LABELS:
-                # Intercardinal direction
-                tick_h = intercardinal_tick_h
-                label = LABELS[norm]
-            elif self.tick_interval > 0 and norm % self.tick_interval == 0:
-                # Numbered tick
-                tick_h = numbered_tick_h
-                label = str(norm)
-            elif norm % 5 == 0:
-                # Minor tick every 5 degrees
+            elif is_label_tick or is_minor_tick:
                 tick_h = minor_tick_h
             else:
                 continue
 
             ix = int(round(x))
 
-            # Draw tick line from top downward
-            draw.line([(ix, 0), (ix, tick_h)], fill=self.fg, width=1)
+            # Draw tick from bottom of tape upward
+            draw.line([(ix, height - 1), (ix, height - 1 - tick_h)], fill=self.fg, width=1)
 
-            # Draw label below tick
+            # Draw label above the tick
+            label = None
+            if is_cardinal or is_intercardinal:
+                label = LABELS[norm]
+            elif is_label_tick and self.show_values:
+                label = str(norm)
+
             if label is not None:
-                label_y = tick_h + 2
-                draw.text((ix, label_y), label, font=self.font, anchor="mt", fill=self.fg)
-
-        # Centre marker — downward-pointing triangle at bottom
-        marker_h = max(4, int(height * 0.2))
-        marker_half_w = max(3, marker_h // 2)
-        cx = width // 2
-        draw.polygon([
-            (cx, height - 1),
-            (cx - marker_half_w, height - 1 - marker_h),
-            (cx + marker_half_w, height - 1 - marker_h),
-        ], fill=self.marker_rgb)
+                label_y = height - 1 - tick_h - 2
+                draw.text((ix, label_y), label, font=self.font, anchor="mb", fill=self.fg)
 
         return image
 

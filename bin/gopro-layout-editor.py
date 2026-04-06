@@ -312,7 +312,7 @@ COMPONENT_DEFS = [
     # -- Heading tape --
     ("heading_tape", "Heading Tape", 400, 60, "#cc6644",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="heading_tape">
-        <component type="heading-tape" width="{w}" height="{h}" size="{ht_font_size}" tick-interval="{ht_tick_interval}" bg="{ht_bg}" fg="{ht_fg}" marker-rgb="{ht_marker}" opacity="{ht_opacity}"/>
+        <component type="heading-tape" width="{w}" height="{h}" size="{ht_font_size}" tick-interval="{ht_tick_interval}" label-interval="{ht_label_interval}" visible-range="{ht_visible_range}" show-values="{ht_show_values}" bg="{ht_bg}" fg="{ht_fg}" marker-rgb="{ht_marker}" opacity="{ht_opacity}"/>
     </composite>'''),
 ]
 
@@ -1723,6 +1723,9 @@ class LayoutEditorApp(tk.Tk):
             # Heading tape defaults
             "ht_font_size": 16,
             "ht_tick_interval": 10,
+            "ht_label_interval": 30,
+            "ht_visible_range": 90,
+            "ht_show_values": "true",
             "ht_bg": "0,0,0",
             "ht_fg": "255,255,255",
             "ht_marker": "255,0,0",
@@ -2636,8 +2639,11 @@ COMPONENT_OPTIONS = {
     "heading_tape": {
         "title": "Heading Tape Options",
         "fields": [
-            ("ht_font_size", "Font Size", "spinbox", 16, (8, 48, 2)),
+            ("ht_visible_range", "Visible Range (°)", "spinbox", 90, (30, 360, 10)),
             ("ht_tick_interval", "Tick Interval (°)", "spinbox", 10, (5, 45, 5)),
+            ("ht_label_interval", "Label Interval (°)", "spinbox", 30, (10, 90, 5)),
+            ("ht_show_values", "Show Degree Values", "checkbox", True, []),
+            ("ht_font_size", "Font Size", "spinbox", 16, (8, 48, 2)),
             ("ht_bg", "Background (R,G,B)", "colour_select", "0,0,0", []),
             ("ht_fg", "Foreground (R,G,B)", "colour_select", "255,255,255", []),
             ("ht_marker", "Marker (R,G,B)", "colour_select", "255,0,0", []),
