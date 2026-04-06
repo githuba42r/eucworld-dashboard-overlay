@@ -109,8 +109,8 @@ COMPONENT_DEFS = [
 
     ("big_mph", "Speed", 208, 160, "#ff6644",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="big_mph">
-        <component type="metric_unit" metric="speed" units="speed" size="{text_size}">{{:~c}}</component>
-        <component type="metric" x="0" y="0" metric="speed" units="speed" dp="0" size="{speed_font_size}" />
+        <component type="metric_unit" metric="speed" units="speed" size="{text_size}" rgb="{label_rgb}">{{:~c}}</component>
+        <component type="metric" x="0" y="0" metric="speed" units="speed" dp="0" size="{speed_font_size}" rgb="{value_rgb}" />
     </composite>'''),
 
     ("gradient_chart", "Alt Chart", 600, 80, "#aa88cc",
@@ -120,16 +120,16 @@ COMPONENT_DEFS = [
 
     ("gradient", "Gradient", 150, 70, "#ccaa44",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="gradient">
-        <component type="text" x="{icon_size}" y="0" size="{text_size}">SLOPE(%)</component>
+        <component type="text" x="{icon_size}" y="0" size="{text_size}" rgb="{label_rgb}">SLOPE(%)</component>
         <component type="icon" x="0" y="0" file="slope-triangle.png" size="{icon_size}"/>
-        <component type="metric" x="{icon_size}" y="{value_y}" metric="gradient" dp="0" size="{value_font_size}" />
+        <component type="metric" x="{icon_size}" y="{value_y}" metric="gradient" dp="0" size="{value_font_size}" rgb="{value_rgb}" />
     </composite>'''),
 
     ("altitude", "Altitude", 150, 70, "#44ccaa",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="altitude">
-        <component type="metric_unit" x="{icon_size}" y="0" metric="alt" units="alt" size="{text_size}">ALT({{:~C}})</component>
+        <component type="metric_unit" x="{icon_size}" y="0" metric="alt" units="alt" size="{text_size}" rgb="{label_rgb}">ALT({{:~C}})</component>
         <component type="icon" x="0" y="0" file="mountain.png" size="{icon_size}"/>
-        <component type="metric" x="{icon_size}" y="{value_y}" metric="alt" units="alt" dp="0" size="{value_font_size}" />
+        <component type="metric" x="{icon_size}" y="{value_y}" metric="alt" units="alt" dp="0" size="{value_font_size}" rgb="{value_rgb}" />
     </composite>'''),
 
     ("temperature", "Temp", 150, 70, "#cc4444",
@@ -158,6 +158,112 @@ COMPONENT_DEFS = [
 
     ("journey_map", "Journey Map", 256, 256, "#8866cc",
      '''    <component type="journey_map" name="journey_map" x="{x}" y="{y}" size="{map_size}" corner_radius="{map_corner_radius}" opacity="{map_opacity}" fill="{jm_track_colour}" line-width="{jm_line_width}" loc-fill="{jm_loc_colour}" loc-outline="{jm_loc_outline}" loc-size="{jm_loc_size}"/>'''),
+
+    # -- EUC telemetry components --
+    ("battery_value", "Battery %", 150, 70, "#44bb44",
+     '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="battery_value">
+        <component type="text" x="0" y="0" size="{text_size}" rgb="{label_rgb}">BATTERY</component>
+        <component type="metric" x="0" y="{value_y}" metric="battery" dp="0" size="{value_font_size}" rgb="{value_rgb}" />
+        <component type="text" x="{w}" y="{value_y}" size="{value_font_size}" rgb="{value_rgb}" align="right">%</component>
+    </composite>'''),
+
+    ("voltage_value", "Voltage", 150, 70, "#bbbb44",
+     '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="voltage_value">
+        <component type="text" x="0" y="0" size="{text_size}" rgb="{label_rgb}">VOLTAGE</component>
+        <component type="metric" x="0" y="{value_y}" metric="voltage" dp="1" size="{value_font_size}" rgb="{value_rgb}" />
+        <component type="text" x="{w}" y="{value_y}" size="{value_font_size}" rgb="{value_rgb}" align="right">V</component>
+    </composite>'''),
+
+    ("current_value", "Current", 150, 70, "#bb8844",
+     '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="current_value">
+        <component type="text" x="0" y="0" size="{text_size}" rgb="{label_rgb}">CURRENT</component>
+        <component type="metric" x="0" y="{value_y}" metric="current" dp="1" size="{value_font_size}" rgb="{value_rgb}" />
+        <component type="text" x="{w}" y="{value_y}" size="{value_font_size}" rgb="{value_rgb}" align="right">A</component>
+    </composite>'''),
+
+    ("power_value", "Power", 150, 70, "#bb4488",
+     '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="power_value">
+        <component type="text" x="0" y="0" size="{text_size}" rgb="{label_rgb}">POWER</component>
+        <component type="metric" x="0" y="{value_y}" metric="power" dp="0" size="{value_font_size}" rgb="{value_rgb}" />
+        <component type="text" x="{w}" y="{value_y}" size="{value_font_size}" rgb="{value_rgb}" align="right">W</component>
+    </composite>'''),
+
+    ("battery_chart", "Battery Chart", 300, 80, "#44bb44",
+     '''    <composite x="{x}" y="{y}" name="battery_chart">
+        <component type="chart" x="0" y="0" metric="battery" units="percent" width="{w}" height="{h}" filled="true" seconds="300" bg="0,0,0,170" fill="68,187,68,170" line="255,255,255,170"/>
+    </composite>'''),
+
+    ("voltage_chart", "Voltage Chart", 300, 80, "#bbbb44",
+     '''    <composite x="{x}" y="{y}" name="voltage_chart">
+        <component type="chart" x="0" y="0" metric="voltage" units="volt" width="{w}" height="{h}" filled="true" seconds="300" bg="0,0,0,170" fill="187,187,68,170" line="255,255,255,170"/>
+    </composite>'''),
+
+    ("power_chart", "Power Chart", 300, 80, "#bb4488",
+     '''    <composite x="{x}" y="{y}" name="power_chart">
+        <component type="chart" x="0" y="0" metric="power" units="watt" width="{w}" height="{h}" filled="true" seconds="300" bg="0,0,0,170" fill="187,68,136,170" line="255,255,255,170"/>
+    </composite>'''),
+
+    # -- Gauges --
+    ("speed_gauge", "Speed Gauge", 256, 256, "#ff6644",
+     '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="speed_gauge">
+        <component type="{gauge_style}" size="{gauge_size}" metric="speed" units="kph" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"/>
+    </composite>'''),
+
+    ("battery_gauge", "Battery Gauge", 256, 256, "#44bb44",
+     '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="battery_gauge">
+        <component type="{gauge_style}" size="{gauge_size}" metric="battery" units="percent" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"/>
+    </composite>'''),
+
+    ("power_gauge", "Power Gauge", 256, 256, "#bb4488",
+     '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="power_gauge">
+        <component type="{gauge_style}" size="{gauge_size}" metric="power" units="watt" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"/>
+    </composite>'''),
+
+    ("voltage_gauge", "Voltage Gauge", 256, 256, "#bbbb44",
+     '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="voltage_gauge">
+        <component type="{gauge_style}" size="{gauge_size}" metric="voltage" units="volt" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"/>
+    </composite>'''),
+
+    ("compass_display", "Compass", 256, 256, "#6688cc",
+     '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="compass_display">
+        <component type="compass" size="{gauge_size}"/>
+    </composite>'''),
+
+    ("compass_arrow_display", "Compass Arrow", 256, 256, "#4466aa",
+     '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="compass_arrow_display">
+        <component type="compass-arrow" size="{gauge_size}"/>
+    </composite>'''),
+
+    ("circuit_map", "Circuit Map", 256, 256, "#66aa88",
+     '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="circuit_map">
+        <component type="cairo-circuit-map" size="{gauge_size}"/>
+    </composite>'''),
+
+    # -- Bars --
+    ("speed_bar", "Speed Bar", 400, 30, "#ff8844",
+     '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="speed_bar">
+        <component type="bar" width="{w}" height="{h}" metric="speed" units="kph" max="{gauge_max}" min="0" outline="255,255,255,128" fill="255,136,68,200"/>
+    </composite>'''),
+
+    ("battery_bar", "Battery Bar", 400, 30, "#44bb44",
+     '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="battery_bar">
+        <component type="bar" width="{w}" height="{h}" metric="battery" units="percent" max="100" min="0" outline="255,255,255,128" fill="68,187,68,200"/>
+    </composite>'''),
+
+    # -- Additional maps --
+    ("moving_journey_map", "Moving Journey Map", 256, 256, "#7766cc",
+     '''    <component type="moving-journey-map" name="moving_journey_map" x="{x}" y="{y}" size="{map_size}" zoom="{map_zoom}" corner_radius="{map_corner_radius}" opacity="{map_opacity}"/>'''),
+
+    # -- ASI / MSI gauges --
+    ("asi_gauge", "Airspeed Indicator", 256, 256, "#448888",
+     '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="asi_gauge">
+        <component type="asi" size="{gauge_size}" metric="speed" units="kph"/>
+    </composite>'''),
+
+    ("msi_gauge", "Motor Speed Indicator", 256, 256, "#884488",
+     '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="msi_gauge">
+        <component type="msi2" size="{gauge_size}" metric="speed" units="kph"/>
+    </composite>'''),
 ]
 
 MAP_STYLES = [
@@ -603,11 +709,38 @@ def default_component_positions(eff_w: int, eff_h: int) -> list[OverlayComponent
         "heartbeat": (eff_w - 20, speed_y + int(160 * s)),
         "moving_map": (right_x, int(100 * s)),
         "journey_map": (right_x, int(100 * s) + int(276 * s)),
+        # EUC telemetry defaults
+        "battery_value": (16, int(100 * s)),
+        "voltage_value": (16, int(180 * s)),
+        "current_value": (16, int(260 * s)),
+        "power_value": (16, int(340 * s)),
+        "battery_chart": (int(200 * s), int(100 * s)),
+        "voltage_chart": (int(200 * s), int(190 * s)),
+        "power_chart": (int(200 * s), int(280 * s)),
+        # Gauges
+        "speed_gauge": (int(400 * s), int(200 * s)),
+        "battery_gauge": (int(400 * s), int(480 * s)),
+        "power_gauge": (int(680 * s), int(200 * s)),
+        "voltage_gauge": (int(680 * s), int(480 * s)),
+        "compass_display": (right_x, int(600 * s)),
+        "compass_arrow_display": (right_x, int(600 * s)),
+        "speed_bar": (16, speed_y + int(180 * s)),
+        "battery_bar": (16, speed_y + int(220 * s)),
+        "moving_journey_map": (right_x, int(100 * s) + int(276 * s)),
+        "circuit_map": (right_x, int(600 * s)),
+        "asi_gauge": (int(400 * s), int(200 * s)),
+        "msi_gauge": (int(400 * s), int(200 * s)),
     }
 
     # Default enabled/disabled
     disabled = {"heartbeat", "temperature", "cadence", "date_only", "time_only",
-                 "gps_coords", "gps_lock"}
+                 "gps_coords", "gps_lock",
+                 "battery_value", "voltage_value", "current_value", "power_value",
+                 "battery_chart", "voltage_chart", "power_chart",
+                 "speed_gauge", "battery_gauge", "power_gauge", "voltage_gauge",
+                 "compass_display", "compass_arrow_display",
+                 "speed_bar", "battery_bar",
+                 "moving_journey_map", "circuit_map", "asi_gauge", "msi_gauge"}
 
     components = []
     for name, label, ref_w, ref_h, color, xml_tmpl in COMPONENT_DEFS:
@@ -721,15 +854,23 @@ def _auto_font_sizes(comp: OverlayComponent) -> dict:
     w = comp.width
     name = comp.name
 
+    _gauge_names = {"speed_gauge", "battery_gauge", "power_gauge", "voltage_gauge",
+                     "compass_display", "compass_arrow_display", "asi_gauge", "msi_gauge",
+                     "circuit_map"}
+    if name in _gauge_names:
+        return {"gauge_size": min(w, h)}
+
     if name == "big_mph":
         # Speed number fills the component height; unit label is small
         return {"speed_font_size": h, "text_size": max(8, h // 10)}
-    elif name in ("gradient", "altitude", "temperature", "cadence", "heartbeat"):
+    elif name in ("gradient", "altitude", "temperature", "cadence", "heartbeat",
+                   "battery_value", "voltage_value", "current_value", "power_value"):
         # Icon is ~91% of height; value text ~46%, label ~23%
         icon_size = max(16, int(h * 0.91))
         text_size = max(8, int(h * 0.23))
-        value_y = text_size + max(2, text_size // 4)
-        return {"value_font_size": max(12, int(h * 0.46)),
+        value_font_size = max(12, int(h * 0.46))
+        value_y = text_size + value_font_size // 2
+        return {"value_font_size": value_font_size,
                 "text_size": text_size,
                 "icon_size": icon_size,
                 "value_y": value_y}
@@ -802,10 +943,13 @@ def generate_shell_script(
         out_name = video.path.stem + "_overlay" + video.path.suffix
         out_path = video.path.parent / out_name
 
+        # Use --xlsx or --gpx depending on input file type
+        gpx_arg = "--xlsx" if gpx_path.suffix.lower() == ".xlsx" else "--gpx"
+
         cmd_parts = [
             f'python "{dashboard_script}"',
             f'--font "{font}"',
-            f'--gpx "{gpx_path}"',
+            f'{gpx_arg} "{gpx_path}"',
             "--use-gpx-only",
             "--video-time-start video-created",
             f"--overlay-size {video.eff_width}x{video.eff_height}",
@@ -896,8 +1040,8 @@ class LayoutEditorApp(tk.Tk):
         # Menu bar
         menubar = tk.Menu(self)
         file_menu = tk.Menu(menubar, tearoff=0)
-        file_menu.add_command(label="Open GPX File...", command=self._open_gpx, accelerator="Ctrl+G")
-        file_menu.add_command(label="Clear GPX File", command=self._clear_gpx)
+        file_menu.add_command(label="Open Route File...", command=self._open_gpx, accelerator="Ctrl+G")
+        file_menu.add_command(label="Clear Route File", command=self._clear_gpx)
         file_menu.add_separator()
         file_menu.add_command(label="Add Video Files...", command=self._add_videos, accelerator="Ctrl+O")
         file_menu.add_command(label="Remove Selected Video", command=self._remove_video, accelerator="Delete")
@@ -934,7 +1078,7 @@ class LayoutEditorApp(tk.Tk):
         main_pane.add(left_frame, weight=0)
 
         # GPX display
-        gpx_frame = ttk.LabelFrame(left_frame, text="GPX File")
+        gpx_frame = ttk.LabelFrame(left_frame, text="Route File")
         gpx_frame.pack(fill=tk.X, padx=4, pady=2)
         self.gpx_label = ttk.Label(gpx_frame, text="(none)", wraplength=200)
         self.gpx_label.pack(padx=4, pady=2)
@@ -1068,24 +1212,30 @@ class LayoutEditorApp(tk.Tk):
 
     def _open_gpx(self):
         path = filedialog.askopenfilename(
-            title="Select GPX File",
+            title="Select Track File",
             initialdir=self.workdir,
-            filetypes=[("GPX files", "*.gpx"), ("FIT files", "*.fit"), ("All files", "*.*")])
+            filetypes=[("GPX files", "*.gpx"), ("FIT files", "*.fit"),
+                       ("EUC World XLSX", "*.xlsx"), ("All files", "*.*")])
         if path:
             self.gpx_path = Path(path)
-            self.gpx_label.config(text=self.gpx_path.name)
-            loc = _extract_gpx_first_point(self.gpx_path)
-            if loc:
-                self.gpx_location = loc
-                self.status_var.set(f"GPX: {self.gpx_path.name} (lat={loc[0]:.4f}, lon={loc[1]:.4f})")
+            suffix = self.gpx_path.suffix.lower()
+            type_label = {".gpx": "GPX", ".fit": "FIT", ".xlsx": "XLSX"}.get(suffix, suffix.upper())
+            self.gpx_label.config(text=f"[{type_label}] {self.gpx_path.name}")
+            if suffix == ".xlsx":
+                self.status_var.set(f"Route: {self.gpx_path.name} (EUC World XLSX)")
             else:
-                self.status_var.set(f"GPX: {self.gpx_path.name}")
+                loc = _extract_gpx_first_point(self.gpx_path)
+                if loc:
+                    self.gpx_location = loc
+                    self.status_var.set(f"Route: {self.gpx_path.name} ({type_label}, lat={loc[0]:.4f}, lon={loc[1]:.4f})")
+                else:
+                    self.status_var.set(f"Route: {self.gpx_path.name} ({type_label})")
 
     def _clear_gpx(self):
         self.gpx_path = None
         self.gpx_location = None
         self.gpx_label.config(text="(none)")
-        self.status_var.set("GPX file cleared.")
+        self.status_var.set("Route file cleared.")
 
     def _remove_video(self):
         sel = self.video_listbox.curselection()
@@ -1195,6 +1345,17 @@ class LayoutEditorApp(tk.Tk):
             "chart_bg": "0,0,0,170",
             "chart_fill": "91,113,146,170",
             "chart_line": "255,255,255,170",
+            # Gauge defaults
+            "gauge_size": 256,
+            "gauge_style": "cairo-gauge-round-annotated",
+            "gauge_max": 60,
+            "gauge_min": 0,
+            "gauge_start": 143,
+            "gauge_length": 254,
+            "gauge_sectors": 6,
+            # Sub-component colour defaults
+            "label_rgb": "255,255,255",
+            "value_rgb": "255,255,255",
         }
 
     def _on_snap_toggle(self):
@@ -1655,41 +1816,49 @@ class LayoutEditorApp(tk.Tk):
             return
         path = filedialog.asksaveasfilename(
             title="Save Layout XML",
+            initialdir=self.workdir,
             defaultextension=".xml",
             filetypes=[("XML files", "*.xml"), ("All files", "*.*")])
-        if path:
+        if not path:
+            return
+        try:
             xml = generate_layout_xml(self.components, self._get_map_props())
             Path(path).write_text(xml)
             self.status_var.set(f"Layout saved: {Path(path).name}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save layout:\n{e}")
 
     def _export_shell_script(self):
         if not self._validate_for_encoding():
             return
         path = filedialog.asksaveasfilename(
             title="Export Shell Script",
+            initialdir=self.workdir,
             defaultextension=".sh",
             filetypes=[("Shell scripts", "*.sh"), ("All files", "*.*")])
         if not path:
             return
+        try:
+            xml = generate_layout_xml(self.components, self._get_map_props())
 
-        xml = generate_layout_xml(self.components, self._get_map_props())
-
-        gpu = self.gpu_profile if self.use_gpu.get() else None
-        script = generate_shell_script(
-            videos=self.videos,
-            gpx_path=self.gpx_path,
-            layout_xml=xml,
-            speed_unit=self.speed_unit.get(),
-            font=self.font_path,
-            gpu_profile=gpu,
-            dashboard_script=self._dashboard_script,
-            map_style=self.map_style.get(),
-            gpx_time_offset=self.gpx_time_offset.get(),
-            sample_duration=self._get_sample_duration(),
-        )
-        Path(path).write_text(script)
-        os.chmod(path, 0o755)
-        self.status_var.set(f"Script exported: {Path(path).name}")
+            gpu = self.gpu_profile if self.use_gpu.get() else None
+            script = generate_shell_script(
+                videos=self.videos,
+                gpx_path=self.gpx_path,
+                layout_xml=xml,
+                speed_unit=self.speed_unit.get(),
+                font=self.font_path,
+                gpu_profile=gpu,
+                dashboard_script=self._dashboard_script,
+                map_style=self.map_style.get(),
+                gpx_time_offset=self.gpx_time_offset.get(),
+                sample_duration=self._get_sample_duration(),
+            )
+            Path(path).write_text(script)
+            os.chmod(path, 0o755)
+            self.status_var.set(f"Script exported: {Path(path).name}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to export script:\n{e}")
 
     def _get_sample_duration(self) -> Optional[float]:
         val = self.sample_duration.get().strip()
@@ -1720,10 +1889,15 @@ class LayoutEditorApp(tk.Tk):
 
         # Save layout XML to temp file (cleaned up by EncodingDialog on close)
         import tempfile
+        try:
+            xml = generate_layout_xml(self.components, self._get_map_props())
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to generate layout XML:\n{e}")
+            return
         fd, tmp_path = tempfile.mkstemp(prefix="gopro-layout-", suffix=".xml")
         os.close(fd)
         xml_path = Path(tmp_path)
-        xml_path.write_text(generate_layout_xml(self.components, self._get_map_props()))
+        xml_path.write_text(xml)
 
         EncodingDialog(self, self.videos, self.gpx_path, xml_path,
                        self.speed_unit.get(), self.font_path,
@@ -1778,44 +1952,60 @@ COMPONENT_OPTIONS = {
         "title": "Speed Display Options",
         "fields": [
             ("speed_unit", "Speed Unit", "combo", "kph", ["kph", "mph", "knots"]),
-            ("speed_font_size", "Speed Font Size", "spinbox", 160, (32, 256, 8)),
+            ("speed_font_size", "Speed Font Size", "spinbox", 160, (32, 400, 8)),
             ("text_size", "Label Font Size", "spinbox", 16, (8, 48, 2)),
+            ("label_rgb", "Label Colour (R,G,B)", "colour_select", "255,255,255", []),
+            ("value_rgb", "Value Colour (R,G,B)", "colour_select", "255,255,255", []),
             ("comp_font", "Font", "font_select", "", []),
         ],
     },
     "gradient": {
         "title": "Gradient Options",
         "fields": [
+            ("icon_size", "Icon Size", "spinbox", 64, (16, 128, 4)),
             ("value_font_size", "Value Font Size", "spinbox", 32, (12, 96, 4)),
             ("text_size", "Label Font Size", "spinbox", 16, (8, 48, 2)),
+            ("value_y", "Value Y Offset", "spinbox", 18, (0, 100, 2)),
+            ("label_rgb", "Label Colour (R,G,B)", "colour_select", "255,255,255", []),
+            ("value_rgb", "Value Colour (R,G,B)", "colour_select", "255,255,255", []),
         ],
     },
     "altitude": {
         "title": "Altitude Options",
         "fields": [
+            ("icon_size", "Icon Size", "spinbox", 64, (16, 128, 4)),
             ("value_font_size", "Value Font Size", "spinbox", 32, (12, 96, 4)),
             ("text_size", "Label Font Size", "spinbox", 16, (8, 48, 2)),
+            ("value_y", "Value Y Offset", "spinbox", 18, (0, 100, 2)),
+            ("label_rgb", "Label Colour (R,G,B)", "colour_select", "255,255,255", []),
+            ("value_rgb", "Value Colour (R,G,B)", "colour_select", "255,255,255", []),
         ],
     },
     "temperature": {
         "title": "Temperature Options",
         "fields": [
+            ("icon_size", "Icon Size", "spinbox", 64, (16, 128, 4)),
             ("value_font_size", "Value Font Size", "spinbox", 32, (12, 96, 4)),
             ("text_size", "Label Font Size", "spinbox", 16, (8, 48, 2)),
+            ("value_y", "Value Y Offset", "spinbox", 18, (0, 100, 2)),
         ],
     },
     "cadence": {
         "title": "Cadence Options",
         "fields": [
+            ("icon_size", "Icon Size", "spinbox", 64, (16, 128, 4)),
             ("value_font_size", "Value Font Size", "spinbox", 32, (12, 96, 4)),
             ("text_size", "Label Font Size", "spinbox", 16, (8, 48, 2)),
+            ("value_y", "Value Y Offset", "spinbox", 18, (0, 100, 2)),
         ],
     },
     "heartbeat": {
         "title": "Heart Rate Options",
         "fields": [
+            ("icon_size", "Icon Size", "spinbox", 64, (16, 128, 4)),
             ("value_font_size", "Value Font Size", "spinbox", 32, (12, 96, 4)),
             ("text_size", "Label Font Size", "spinbox", 16, (8, 48, 2)),
+            ("value_y", "Value Y Offset", "spinbox", 18, (0, 100, 2)),
         ],
     },
     "moving_map": {
@@ -1857,6 +2047,146 @@ COMPONENT_OPTIONS = {
             ("chart_bg", "Background (R,G,B,A)", "colour_select", "0,0,0,170", []),
             ("chart_fill", "Fill Colour (R,G,B,A)", "colour_select", "91,113,146,170", []),
             ("chart_line", "Line Colour (R,G,B,A)", "colour_select", "255,255,255,170", []),
+        ],
+    },
+    "battery_value": {
+        "title": "Battery % Display Options",
+        "fields": [
+            ("value_font_size", "Value Font Size", "spinbox", 32, (12, 96, 4)),
+            ("text_size", "Label Font Size", "spinbox", 16, (8, 48, 2)),
+            ("value_y", "Value Y Offset", "spinbox", 18, (0, 100, 2)),
+            ("label_rgb", "Label Colour (R,G,B)", "colour_select", "255,255,255", []),
+            ("value_rgb", "Value Colour (R,G,B)", "colour_select", "255,255,255", []),
+        ],
+    },
+    "voltage_value": {
+        "title": "Voltage Display Options",
+        "fields": [
+            ("value_font_size", "Value Font Size", "spinbox", 32, (12, 96, 4)),
+            ("text_size", "Label Font Size", "spinbox", 16, (8, 48, 2)),
+            ("value_y", "Value Y Offset", "spinbox", 18, (0, 100, 2)),
+            ("label_rgb", "Label Colour (R,G,B)", "colour_select", "255,255,255", []),
+            ("value_rgb", "Value Colour (R,G,B)", "colour_select", "255,255,255", []),
+        ],
+    },
+    "current_value": {
+        "title": "Current Display Options",
+        "fields": [
+            ("value_font_size", "Value Font Size", "spinbox", 32, (12, 96, 4)),
+            ("text_size", "Label Font Size", "spinbox", 16, (8, 48, 2)),
+            ("value_y", "Value Y Offset", "spinbox", 18, (0, 100, 2)),
+            ("label_rgb", "Label Colour (R,G,B)", "colour_select", "255,255,255", []),
+            ("value_rgb", "Value Colour (R,G,B)", "colour_select", "255,255,255", []),
+        ],
+    },
+    "power_value": {
+        "title": "Power Display Options",
+        "fields": [
+            ("value_font_size", "Value Font Size", "spinbox", 32, (12, 96, 4)),
+            ("text_size", "Label Font Size", "spinbox", 16, (8, 48, 2)),
+            ("value_y", "Value Y Offset", "spinbox", 18, (0, 100, 2)),
+            ("label_rgb", "Label Colour (R,G,B)", "colour_select", "255,255,255", []),
+            ("value_rgb", "Value Colour (R,G,B)", "colour_select", "255,255,255", []),
+        ],
+    },
+    "speed_gauge": {
+        "title": "Speed Gauge Options",
+        "fields": [
+            ("gauge_style", "Gauge Style", "combo", "cairo-gauge-round-annotated",
+             ["cairo-gauge-round-annotated", "cairo-gauge-arc-annotated", "cairo-gauge-donut", "cairo-gauge-marker"]),
+            ("gauge_size", "Size", "spinbox", 256, (64, 512, 16)),
+            ("gauge_max", "Max Value", "spinbox", 60, (10, 300, 5)),
+            ("gauge_min", "Min Value", "spinbox", 0, (-100, 100, 5)),
+            ("gauge_start", "Start Angle (°)", "spinbox", 143, (0, 360, 5)),
+            ("gauge_length", "Arc Length (°)", "spinbox", 254, (90, 360, 10)),
+            ("gauge_sectors", "Sectors", "spinbox", 6, (2, 20, 1)),
+        ],
+    },
+    "battery_gauge": {
+        "title": "Battery Gauge Options",
+        "fields": [
+            ("gauge_style", "Gauge Style", "combo", "cairo-gauge-donut",
+             ["cairo-gauge-donut", "cairo-gauge-round-annotated", "cairo-gauge-arc-annotated", "cairo-gauge-marker"]),
+            ("gauge_size", "Size", "spinbox", 256, (64, 512, 16)),
+            ("gauge_max", "Max Value", "spinbox", 100, (50, 100, 5)),
+            ("gauge_min", "Min Value", "spinbox", 0, (0, 50, 5)),
+            ("gauge_start", "Start Angle (°)", "spinbox", 90, (0, 360, 5)),
+            ("gauge_length", "Arc Length (°)", "spinbox", 270, (90, 360, 10)),
+            ("gauge_sectors", "Sectors", "spinbox", 5, (2, 20, 1)),
+        ],
+    },
+    "power_gauge": {
+        "title": "Power Gauge Options",
+        "fields": [
+            ("gauge_style", "Gauge Style", "combo", "cairo-gauge-arc-annotated",
+             ["cairo-gauge-arc-annotated", "cairo-gauge-round-annotated", "cairo-gauge-donut", "cairo-gauge-marker"]),
+            ("gauge_size", "Size", "spinbox", 256, (64, 512, 16)),
+            ("gauge_max", "Max Value", "spinbox", 2000, (100, 5000, 100)),
+            ("gauge_min", "Min Value", "spinbox", -500, (-2000, 0, 100)),
+            ("gauge_start", "Start Angle (°)", "spinbox", 150, (0, 360, 5)),
+            ("gauge_length", "Arc Length (°)", "spinbox", 240, (90, 360, 10)),
+            ("gauge_sectors", "Sectors", "spinbox", 6, (2, 20, 1)),
+        ],
+    },
+    "voltage_gauge": {
+        "title": "Voltage Gauge Options",
+        "fields": [
+            ("gauge_style", "Gauge Style", "combo", "cairo-gauge-marker",
+             ["cairo-gauge-marker", "cairo-gauge-round-annotated", "cairo-gauge-arc-annotated", "cairo-gauge-donut"]),
+            ("gauge_size", "Size", "spinbox", 256, (64, 512, 16)),
+            ("gauge_max", "Max Value", "spinbox", 100, (48, 150, 1)),
+            ("gauge_min", "Min Value", "spinbox", 60, (30, 100, 1)),
+            ("gauge_start", "Start Angle (°)", "spinbox", 150, (0, 360, 5)),
+            ("gauge_length", "Arc Length (°)", "spinbox", 240, (90, 360, 10)),
+            ("gauge_sectors", "Sectors", "spinbox", 5, (2, 20, 1)),
+        ],
+    },
+    "compass_display": {
+        "title": "Compass Options",
+        "fields": [
+            ("gauge_size", "Size", "spinbox", 256, (64, 512, 16)),
+        ],
+    },
+    "compass_arrow_display": {
+        "title": "Compass Arrow Options",
+        "fields": [
+            ("gauge_size", "Size", "spinbox", 256, (64, 512, 16)),
+        ],
+    },
+    "circuit_map": {
+        "title": "Circuit Map Options",
+        "fields": [
+            ("gauge_size", "Size", "spinbox", 256, (64, 512, 16)),
+        ],
+    },
+    "speed_bar": {
+        "title": "Speed Bar Options",
+        "fields": [
+            ("gauge_max", "Max Speed (kph)", "spinbox", 60, (20, 200, 10)),
+        ],
+    },
+    "battery_bar": {
+        "title": "Battery Bar Options",
+        "fields": [],
+    },
+    "moving_journey_map": {
+        "title": "Moving Journey Map Options",
+        "fields": [
+            ("map_zoom", "Zoom Level", "slider", 16, (8, 20)),
+            ("map_corner_radius", "Rounded Corners (0=off)", "spinbox", 35, (0, 128, 5)),
+            ("map_opacity", "Opacity", "slider_float", 0.7, (0.0, 1.0)),
+        ],
+    },
+    "asi_gauge": {
+        "title": "Airspeed Indicator Options",
+        "fields": [
+            ("gauge_size", "Size", "spinbox", 256, (64, 512, 16)),
+        ],
+    },
+    "msi_gauge": {
+        "title": "Motor Speed Indicator Options",
+        "fields": [
+            ("gauge_size", "Size", "spinbox", 256, (64, 512, 16)),
         ],
     },
 }
@@ -2466,16 +2796,26 @@ class ComponentOptionsDialog(tk.Toplevel):
             self.comp.custom_props["chart_height"] = self.comp.height
 
         # Sync W/H to map_size for map components (maps are always square)
-        if self.comp.name in ("moving_map", "journey_map"):
+        if self.comp.name in ("moving_map", "journey_map", "moving_journey_map"):
             size = min(self.comp.width, self.comp.height)
             self.comp.width = size
             self.comp.height = size
             self.parent_app.map_size.set(size)
             self.parent_app.map_size_label.config(text=str(size))
             for c in self.parent_app.components:
-                if c.name in ("moving_map", "journey_map"):
+                if c.name in ("moving_map", "journey_map", "moving_journey_map"):
                     c.width = size
                     c.height = size
+
+        # Sync W/H for square gauge components
+        _gauge_names = {"speed_gauge", "battery_gauge", "power_gauge", "voltage_gauge",
+                        "compass_display", "compass_arrow_display", "asi_gauge", "msi_gauge",
+                        "circuit_map"}
+        if self.comp.name in _gauge_names:
+            size = min(self.comp.width, self.comp.height)
+            self.comp.width = size
+            self.comp.height = size
+            self.comp.custom_props["gauge_size"] = size
 
         for field_id, var in self.result_vars.items():
             value = var.get()
@@ -3256,7 +3596,25 @@ class FontSelectorDialog(tk.Toplevel):
         filter_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
         filter_entry.focus_set()
 
-        # Font list
+        # Buttons — pack at bottom first so they're always visible
+        btn_frame = ttk.Frame(self)
+        btn_frame.pack(side=tk.BOTTOM, pady=8)
+        ttk.Button(btn_frame, text="Browse File...", command=self._browse).pack(side=tk.LEFT, padx=4)
+        ttk.Button(btn_frame, text="Apply", command=self._apply).pack(side=tk.LEFT, padx=4)
+        ttk.Button(btn_frame, text="Cancel", command=self.destroy).pack(side=tk.LEFT, padx=4)
+
+        # Preview — pack before listbox so it stays visible
+        self.preview_label = tk.Label(self, text="0123456789 km/h",
+                                       font=("sans-serif", 20), bg="#2a2a2a", fg="white",
+                                       height=2)
+        self.preview_label.pack(side=tk.BOTTOM, fill=tk.X, padx=12, pady=4)
+
+        # Current selection display
+        self.selection_label = ttk.Label(self, text=f"Current: {self.parent_app.font_path}",
+                                          wraplength=460)
+        self.selection_label.pack(side=tk.BOTTOM, padx=12, pady=4, anchor=tk.W)
+
+        # Font list — fills remaining space
         list_frame = ttk.Frame(self)
         list_frame.pack(fill=tk.BOTH, expand=True, padx=12, pady=4)
         scrollbar = ttk.Scrollbar(list_frame)
@@ -3267,24 +3625,6 @@ class FontSelectorDialog(tk.Toplevel):
         scrollbar.config(command=self.font_listbox.yview)
         self.font_listbox.bind("<<ListboxSelect>>", self._on_select)
         self.font_listbox.bind("<Double-1>", lambda e: self._apply())
-
-        # Current selection display
-        self.selection_label = ttk.Label(self, text=f"Current: {self.parent_app.font_path}",
-                                          wraplength=460)
-        self.selection_label.pack(padx=12, pady=4, anchor=tk.W)
-
-        # Preview
-        self.preview_label = tk.Label(self, text="0123456789 km/h",
-                                       font=("sans-serif", 20), bg="#2a2a2a", fg="white",
-                                       height=2)
-        self.preview_label.pack(fill=tk.X, padx=12, pady=4)
-
-        # Buttons
-        btn_frame = ttk.Frame(self)
-        btn_frame.pack(pady=8)
-        ttk.Button(btn_frame, text="Browse File...", command=self._browse).pack(side=tk.LEFT, padx=4)
-        ttk.Button(btn_frame, text="Apply", command=self._apply).pack(side=tk.LEFT, padx=4)
-        ttk.Button(btn_frame, text="Cancel", command=self.destroy).pack(side=tk.LEFT, padx=4)
 
         self.all_fonts: list[tuple[str, str]] = []  # (display_name, path)
 
@@ -3455,10 +3795,11 @@ class EncodingDialog(tk.Toplevel):
     def _encode_one(self, video: VideoEntry) -> bool:
         out_path = video.path.parent / (video.path.stem + "_overlay" + video.path.suffix)
 
+        gpx_arg = "--xlsx" if self.gpx_path.suffix.lower() == ".xlsx" else "--gpx"
         cmd = [
             sys.executable, str(self.dashboard_script),
             "--font", self.font,
-            "--gpx", str(self.gpx_path),
+            gpx_arg, str(self.gpx_path),
             "--use-gpx-only",
             "--video-time-start", "video-created",
             "--overlay-size", f"{video.eff_width}x{video.eff_height}",
@@ -3603,7 +3944,8 @@ if __name__ == "__main__":
     parser.add_argument("--thunderforest-key", help="Thunderforest API key for tf-* map styles")
     parser.add_argument("--geoapify-key", help="Geoapify API key for geo-* map styles")
     parser.add_argument("--env-file", help="Path to .env file with API keys (API_KEY_THUNDERFOREST, API_KEY_GEOAPIFY)")
-    parser.add_argument("--gpx", help="GPX file to open on startup")
+    parser.add_argument("--gpx", help="GPX/FIT route file to open on startup")
+    parser.add_argument("--xlsx", help="EUC World XLSX file to open as route on startup")
     parser.add_argument("--layout", help="Load layout XML file (or set GOPRO_LAYOUT_XML env var)")
     cli_args = parser.parse_args()
 
@@ -3625,13 +3967,17 @@ if __name__ == "__main__":
     elif os.environ.get("GOPRO_WORKDIR"):
         app.workdir = os.path.abspath(os.environ["GOPRO_WORKDIR"])
 
-    # Load files from CLI args
-    if cli_args.gpx:
-        app.gpx_path = Path(cli_args.gpx)
-        app.gpx_label.config(text=app.gpx_path.name)
-        loc = _extract_gpx_first_point(app.gpx_path)
-        if loc:
-            app.gpx_location = loc
+    # Load route file from CLI args (--gpx or --xlsx)
+    route_file = cli_args.xlsx or cli_args.gpx
+    if route_file:
+        app.gpx_path = Path(route_file)
+        suffix = app.gpx_path.suffix.lower()
+        type_label = {".gpx": "GPX", ".fit": "FIT", ".xlsx": "XLSX"}.get(suffix, suffix.upper())
+        app.gpx_label.config(text=f"[{type_label}] {app.gpx_path.name}")
+        if suffix != ".xlsx":
+            loc = _extract_gpx_first_point(app.gpx_path)
+            if loc:
+                app.gpx_location = loc
 
     for v in (cli_args.videos or []):
         try:
