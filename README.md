@@ -1,10 +1,43 @@
-# Create video overlays from GoPro Videos or any GPX/FIT file
+# EUC World Dashboard Overlay
 
-<a href="https://github.com/time4tea/gopro-dashboard-overlay/discussions"><img alt="GitHub Discussions" src="https://img.shields.io/github/discussions/time4tea/gopro-dashboard-overlay?style=for-the-badge"></a>
-<a href="https://pypi.org/project/gopro-overlay/"><img alt="PyPI" src="https://img.shields.io/pypi/v/gopro-overlay?style=for-the-badge"></a>
-<a href="https://hub.docker.com/r/overlaydash/gopro-dashboard-overlay"><img alt="Docker" src="https://img.shields.io/docker/v/overlaydash/gopro-dashboard-overlay?label=Docker&style=for-the-badge"></a>
+A fork of [gopro-dashboard-overlay](https://github.com/time4tea/gopro-dashboard-overlay) by [time4tea](https://github.com/time4tea), extended with EUC (Electric Unicycle) telemetry support and a visual layout editor.
 
-Discuss on [GitHub Discussions](https://github.com/time4tea/gopro-dashboard-overlay/discussions)
+## What's New in This Fork
+
+### EUC World Integration
+- **Direct XLSX import** (`--xlsx`) — load EUC World XLSX exports as telemetry source, no preprocessing needed
+- **EUC World GPX support** — automatically handles non-standard `<speed>` element placement and km/h to m/s conversion
+- **EUC telemetry metrics** — battery %, voltage, current, and power available as overlay components
+
+### EUC Overlay Components
+- **Value displays** — battery %, voltage (V), current (A), power (W) with configurable font sizes and colours
+- **Time-series charts** — battery, voltage, and power charts showing data over a rolling time window
+- **Gauges** — speed, battery, power, and voltage gauges with selectable styles (round, arc, donut, marker) and auto-scaling ranges from route data
+- **Bars** — speed and battery horizontal bar indicators
+
+### Visual Layout Editor (`gopro-layout-editor.py`)
+- Drag-and-drop component positioning on a live video preview
+- Drag-to-resize with real-time handles
+- Auto-derived font sizes and gauge ranges from component dimensions and route data
+- GPX/Video time sync dialog with video playback (1x/2x/4x/8x), scrolling altitude chart, and fine-tune offset controls
+- Component properties dialogs for all components (colours, sizes, gauge styles, etc.)
+- Self-contained shell script export with embedded layout XML
+- Direct encoding with progress tracking
+- Supports GPX, FIT, and XLSX route files
+
+### Other Enhancements
+- `--gpx-time-offset` — shift GPX/video time alignment by seconds
+- `--sample-duration` — render only N seconds for quick layout testing
+- `<frame>` validation — clear error when width/height attributes are missing
+- Standalone `euc-xlsx-to-gpx.py` converter for batch processing
+
+## Attribution
+
+This project is a fork of [gopro-dashboard-overlay](https://github.com/time4tea/gopro-dashboard-overlay) (v0.133.0) by [time4tea](https://github.com/time4tea), licensed under the MIT License. All original GoPro overlay functionality is preserved.
+
+---
+
+## Original Project Features
 
 - Overlaying exciting graphics onto GoPro videos with super-exact synchronization
 - Create videos from any GPX or FIT file - no GoPro required
