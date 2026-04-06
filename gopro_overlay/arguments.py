@@ -171,6 +171,12 @@ def gopro_dashboard_arguments(args=None):
     gps.add_argument("--gps-bbox-lon-lat", action=BBoxArgs,
                      help="Define GPS Bounding Box, anything outside will be considered 'Not Locked' - minlon,minlat,maxlon,maxlat")
 
+    rendering = parser.add_argument_group("Rendering", "Controlling render output")
+
+    rendering.add_argument("--sample-duration", type=float, default=None,
+                           help="Only render this many seconds of video. Useful for quickly testing "
+                                "overlay layout and positioning without encoding the full video.")
+
     debugging = parser.add_argument_group("Debugging", "Controlling debugging outputs")
 
     debugging.add_argument("--show-ffmpeg", action="store_true", help="Show FFMPEG output (not usually useful)")

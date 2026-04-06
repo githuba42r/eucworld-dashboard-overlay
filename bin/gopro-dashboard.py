@@ -201,11 +201,18 @@ if __name__ == "__main__":
                                 "-from-gpx-and-video-not-created-with-gopro"
                             )
 
+                    # When sample_duration is set, trim the GPX window to match
+                    effective_duration = duration
+                    if args.sample_duration and duration is not None:
+                        sample_tu = timeunits(seconds=args.sample_duration)
+                        if sample_tu < duration:
+                            effective_duration = sample_tu
+
                     frame_meta = timeseries_to_framemeta(
                         fit_or_gpx_timeseries,
                         units,
                         start_date=start_date,
-                        duration=duration
+                        duration=effective_duration
                     )
                     video_duration = frame_meta.duration()
                     packets_per_second = 10
@@ -377,8 +384,16 @@ if __name__ == "__main__":
 
                 overlay = Overlay(framemeta=frame_meta, create_widgets=layout_creator)
 
+                max_frames = None
+                if args.sample_duration:
+                    max_frames = int(args.sample_duration / (0.1 * timelapse_correction))
+                    log(f"Sample mode: rendering {args.sample_duration}s ({max_frames} frames)")
+                    # Also tell ffmpeg to stop reading the input video after sample_duration
+                    ffmpeg_options.input = list(ffmpeg_options.input) + ["-t", str(args.sample_duration)]
+
                 try:
-                    progress.start(len(stepper))
+                    total = min(len(stepper), max_frames) if max_frames else len(stepper)
+                    progress.start(total)
                     with ffmpeg.generate() as writer:
 
                         if args.double_buffer:
@@ -390,6 +405,8 @@ if __name__ == "__main__":
 
                         with buffer:
                             for index, dt in enumerate(stepper.steps()):
+                                if max_frames and index >= max_frames:
+                                    break
                                 progress.update(index)
                                 draw_timer.time(lambda: buffer.draw(lambda frame: overlay.draw(dt, frame)))
 
