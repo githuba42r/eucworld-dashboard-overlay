@@ -67,7 +67,7 @@ COMPONENT_DEFS = [
     ("date_and_time", "Date + Time", 200, 60, "#44aa88",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="date_and_time">
         <component type="datetime" x="0" y="0" format="{date_format}" size="{date_size}" align="left"/>
-        <component type="datetime" x="0" y="{time_y}" format="{time_format}" truncate="5" size="{time_size}" align="left"/>
+        <component type="datetime" x="0" y="{time_y}" format="{time_format}" {time_truncate}size="{time_size}" align="left"/>
     </composite>'''),
 
     ("date_only", "Date Only", 200, 24, "#44aa66",
@@ -77,7 +77,7 @@ COMPONENT_DEFS = [
 
     ("time_only", "Time Only", 200, 36, "#44aacc",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="time_only">
-        <component type="datetime" x="0" y="0" format="{time_format}" truncate="5" size="{time_size}" align="right"/>
+        <component type="datetime" x="0" y="0" format="{time_format}" {time_truncate}size="{time_size}" align="right"/>
     </composite>'''),
 
     ("gps_info", "GPS (Full)", 280, 80, "#88aa44",
@@ -1034,15 +1034,21 @@ def load_layout_xml(xml_path: Path, components: list[OverlayComponent]):
             # Datetime format strings
             if child_type == "datetime" and child.get("format"):
                 fmt = child.get("format")
-                # First datetime in composite = date, second = time
-                if "date_format" not in data.get("custom_props", {}):
+                if name == "time_only":
+                    # time_only has a single datetime child — it's the time format
+                    data.setdefault("custom_props", {})["time_format"] = fmt
+                elif "date_format" not in data.get("custom_props", {}):
+                    # First datetime in composite = date
                     data.setdefault("custom_props", {})["date_format"] = fmt
                 else:
+                    # Second datetime = time
                     data.setdefault("custom_props", {})["time_format"] = fmt
                 # Also extract size for date/time
                 if child.get("size"):
                     s = int(child.get("size"))
-                    if "date_size" not in data.get("custom_props", {}):
+                    if name == "time_only":
+                        data.setdefault("custom_props", {})["time_size"] = s
+                    elif "date_size" not in data.get("custom_props", {}):
                         data.setdefault("custom_props", {})["date_size"] = s
                     else:
                         data.setdefault("custom_props", {})["time_size"] = s
@@ -1262,6 +1268,9 @@ def generate_layout_xml(components: list[OverlayComponent], map_props: dict,
             # Per-component overrides (manual settings take precedence)
             for k, v in comp.custom_props.items():
                 fmt_vars[k] = v
+            # Only truncate time output when format includes microseconds (%f)
+            time_fmt = fmt_vars.get("time_format", "")
+            fmt_vars["time_truncate"] = 'truncate="5" ' if "%f" in time_fmt else ""
             # Build gauge colour attributes based on selected style
             fmt_vars["gauge_colour_attrs"] = _gauge_colour_attrs(comp, fmt_vars)
             # Build title lines — only when show_title is enabled and title text is set
@@ -1892,6 +1901,11 @@ class LayoutEditorApp(tk.Tk):
 
         # Reset components for this resolution
         self.components = default_component_positions(video.eff_width, video.eff_height)
+        # Apply pending layout XML if one was specified before a video was loaded
+        pending = getattr(self, "_pending_layout_xml", None)
+        if pending:
+            self._load_layout_xml(pending)
+            self._pending_layout_xml = None
         self._rebuild_component_checkboxes()
 
         # Calculate scale
@@ -2225,9 +2239,10 @@ class LayoutEditorApp(tk.Tk):
                 if comp.name == "moving_map" and comp.enabled:
                     self.map_size.set(comp.width)
                     self.map_size_label.config(text=str(comp.width))
-                if comp.name == "date_and_time" and comp.enabled:
+                if comp.name in ("date_and_time", "date_only") and comp.enabled:
                     if "date_format" in comp.custom_props:
                         self.date_format.set(comp.custom_props["date_format"])
+                if comp.name in ("date_and_time", "time_only") and comp.enabled:
                     if "time_format" in comp.custom_props:
                         self.time_format.set(comp.custom_props["time_format"])
             self._rebuild_component_checkboxes()
@@ -4606,7 +4621,10 @@ if __name__ == "__main__":
 
     # Load layout XML from CLI arg or env var
     layout_xml = cli_args.layout or os.environ.get("GOPRO_LAYOUT_XML")
-    if layout_xml and app.components:
-        app._load_layout_xml(layout_xml)
+    if layout_xml:
+        app._pending_layout_xml = layout_xml
+        if app.components:
+            app._load_layout_xml(layout_xml)
+            app._pending_layout_xml = None
 
     app.mainloop()

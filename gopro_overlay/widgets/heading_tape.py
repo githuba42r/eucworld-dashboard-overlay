@@ -55,15 +55,15 @@ class HeadingTape(Widget):
         draw.rectangle([(0, 0), (self.width - 1, self.height - 1)], fill=bg_colour, outline=outline, width=1)
         draw.text((self.width / 2, self.height / 2), "---", font=self.font, anchor="mm", fill=self.fg)
 
-        # Dimmed upward-pointing marker at top
+        # Dimmed upward-pointing marker at bottom
         dimmed = tuple(max(0, c // 2) for c in self.marker_rgb[:3])
         marker_h = max(4, int(self.height * 0.2))
         marker_half_w = max(3, marker_h // 2)
         cx = self.width // 2
         draw.polygon([
-            (cx, 0),
-            (cx - marker_half_w, marker_h),
-            (cx + marker_half_w, marker_h),
+            (cx, self.height - 1 - marker_h),
+            (cx - marker_half_w, self.height - 1),
+            (cx + marker_half_w, self.height - 1),
         ], fill=dimmed)
 
         return image
@@ -81,19 +81,23 @@ class HeadingTape(Widget):
         bg_colour = self.bg[:3] + (self.opacity,) if len(self.bg) < 4 else self.bg
         draw.rectangle([(0, 0), (width - 1, height - 1)], fill=bg_colour, outline=self.fg, width=1)
 
-        # Marker at top — upward-pointing triangle
+        # Marker at bottom — upward-pointing triangle
         marker_h = max(4, int(height * 0.2))
         marker_half_w = max(3, marker_h // 2)
         cx = width // 2
+        marker_top = height - 1 - marker_h
         draw.polygon([
-            (cx, 0),
-            (cx - marker_half_w, marker_h),
-            (cx + marker_half_w, marker_h),
+            (cx, marker_top),
+            (cx - marker_half_w, height - 1),
+            (cx + marker_half_w, height - 1),
         ], fill=self.marker_rgb)
 
-        # Ticks and labels drawn below the marker
-        tape_top = marker_h + 2
-        tape_h = height - tape_top
+        # Solid line above the marker
+        line_y = marker_top - 1
+        draw.line([(0, line_y), (width - 1, line_y)], fill=self.fg, width=1)
+
+        # Ticks grow upward from the line, labels at the top
+        tape_h = line_y - 1
 
         # Tick heights relative to tape area
         major_tick_h = int(tape_h * 0.45)
@@ -130,10 +134,10 @@ class HeadingTape(Widget):
 
             ix = int(round(x))
 
-            # Draw tick from bottom of tape upward
-            draw.line([(ix, height - 1), (ix, height - 1 - tick_h)], fill=self.fg, width=1)
+            # Draw tick from line upward
+            draw.line([(ix, line_y), (ix, line_y - tick_h)], fill=self.fg, width=1)
 
-            # Draw label above the tick
+            # Draw label above the tick (at the top)
             label = None
             if is_cardinal or is_intercardinal:
                 label = LABELS[norm]
@@ -141,7 +145,7 @@ class HeadingTape(Widget):
                 label = str(norm)
 
             if label is not None:
-                label_y = height - 1 - tick_h - 2
+                label_y = line_y - tick_h - 2
                 draw.text((ix, label_y), label, font=self.font, anchor="mb", fill=self.fg)
 
         return image
