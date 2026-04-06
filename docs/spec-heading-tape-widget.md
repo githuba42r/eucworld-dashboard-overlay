@@ -6,7 +6,9 @@ A horizontal scrolling heading indicator, styled after aviation HUD heading tape
 
 ```
   250 ... 260 ... N ... 280 ... 290
-                  v
+   |       |     |||     |       |
+  ─────────────────────────────────
+                  ^
 ```
 
 ## File Location
@@ -31,6 +33,10 @@ class HeadingTape(Widget):
         reading: Callable[[], Optional[float]],
         font: ImageFont,
         tick_interval: int = 10,
+        label_interval: int = 30,
+        visible_range: int = 90,
+        show_values: bool = True,
+        show_border: bool = True,
         bg: Tuple[int, ...] = (0, 0, 0),
         fg: Tuple[int, ...] = (255, 255, 255),
         marker_rgb: Tuple[int, ...] = (255, 0, 0),
@@ -47,6 +53,10 @@ class HeadingTape(Widget):
 | `reading` | callable | (required) | Zero-arg callable returning current heading in degrees (float) or None |
 | `font` | ImageFont | (required) | PIL font for degree numbers and cardinal labels |
 | `tick_interval` | int | 10 | Degrees between minor tick marks |
+| `label_interval` | int | 30 | Degrees between numbered labels |
+| `visible_range` | int | 90 | Total degrees visible across the tape width (minimum 10) |
+| `show_values` | bool | True | Whether to display numeric degree labels |
+| `show_border` | bool | True | Whether to draw a border around the tape |
 | `bg` | tuple | (0,0,0) | Background colour (RGB) |
 | `fg` | tuple | (255,255,255) | Foreground colour for ticks, numbers, and labels (RGB) |
 | `marker_rgb` | tuple | (255,0,0) | Colour of the centre heading marker triangle (RGB) |
@@ -106,13 +116,15 @@ Internal method that produces the tape image for a given heading.
       - **Numbered tick** (every `tick_interval` degrees, excluding cardinal/intercardinal positions): medium-short tick, roughly `height * 0.35`. Draw the degree number as text.
       - **Minor tick** (every degree or every 5 degrees, depending on resolution): short tick, roughly `height * 0.15`. No label.
 
-   e. **Draw the tick line** from the top of the tape downward, centred at the calculated x.
+   e. **Draw the centre marker** -- an upward-pointing filled triangle at the bottom-centre of the tape, in `marker_rgb`. The triangle should be approximately `height * 0.2` tall and proportionally wide. Position it at `x = width / 2`, with its base at the bottom of the tape and its apex pointing up.
 
-   f. **Draw the label** (if any) below the tick, using `anchor="mt"` (middle-top) to centre horizontally on x.
+   f. **Draw a solid horizontal line** across the full width of the tape, just above the marker triangle, in `fg` colour. This line separates the tick/label area from the marker.
 
-5. **Draw the centre marker** -- a small downward-pointing filled triangle (inverted "V") at the bottom-centre of the tape, in `marker_rgb`. The triangle should be approximately `height * 0.2` tall and proportionally wide. Position it at `x = width / 2`.
+   g. **Draw tick lines** from the solid line upward, centred at the calculated x.
 
-6. **Return** the composed RGBA image.
+   h. **Draw the label** (if any) above the tick, using `anchor="mb"` (middle-bottom) to centre horizontally on x. Labels sit at the top of the tape.
+
+5. **Return** the composed RGBA image.
 
 #### Cardinal/Intercardinal Label Map
 
@@ -137,9 +149,9 @@ Example: heading = 5, visible range = -60 to +70. Degree -10 normalises to 350 f
 ### Missing Data Handling
 
 When `self.reading()` returns `None`:
-- Draw the background strip with border.
+- Draw the background strip with border (if `show_border` is enabled).
 - Draw dashes ("---") centred on the tape in `fg` colour.
-- Draw the centre marker in a dimmed version of `marker_rgb`.
+- Draw the marker triangle at the bottom in a dimmed version of `marker_rgb`.
 - Cache this state so it is not redrawn every frame (use a sentinel like `self.last_reading = "none"`).
 
 ## XML Registration
@@ -194,9 +206,13 @@ from gopro_overlay.widgets.heading_tape import HeadingTape
 | `height` | int | 60 | Tape height in pixels |
 | `metric` | string | "cog" | Data source: "cog" or "azi" |
 | `size` | int | 16 | Font size for labels and numbers |
-| `tick-interval` | int | 10 | Degrees between numbered tick marks |
+| `tick-interval` | int | 10 | Degrees between minor tick marks |
+| `label-interval` | int | 30 | Degrees between numbered labels |
+| `visible-range` | int | 90 | Total degrees visible across the tape width |
+| `show-values` | bool | "true" | Whether to display numeric degree labels |
+| `show-border` | bool | "true" | Whether to draw a border around the tape |
 | `bg` | RGB | "0,0,0" | Background colour |
-| `fg` | RGB | "255,255,255" | Foreground colour (ticks, text) |
+| `fg` | RGB | "255,255,255" | Foreground colour (ticks, text, solid line) |
 | `marker-rgb` | RGB | "255,0,0" | Centre marker triangle colour |
 | `opacity` | int | 180 | Background transparency (0=transparent, 255=opaque) |
 

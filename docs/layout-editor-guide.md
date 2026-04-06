@@ -119,9 +119,13 @@ Use File > Load Layout XML, the `--layout` CLI argument, or the `GOPRO_LAYOUT_XM
 
 1. Component positions and sizes are read from the XML element attributes (`x`, `y`, `width`, `height`, `size`).
 2. Components found in the XML are enabled; components not found are disabled.
-3. Any custom properties stored in the XML are restored.
+3. Any custom properties stored in the XML are restored (including date/time formats, gauge settings, etc.).
 
 This round-trip preserves component sizes -- if you resize a component in the editor, save, and reload, the sizes are retained.
+
+**Layout persistence across video changes**: Once a layout is loaded (via the menu or `--layout`), the editor remembers the layout path. When you add, remove, or switch videos, the layout is automatically reapplied to the new component set, so your layout settings are not lost.
+
+**Deferred loading with `--layout`**: If `--layout` is specified without `--videos`, the layout is stored and applied automatically when the first video is added.
 
 ## Exporting Self-Contained Shell Scripts
 

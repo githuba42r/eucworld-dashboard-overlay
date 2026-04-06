@@ -46,6 +46,8 @@ def draw_tape(tape, w=400, h=60):
 | `test_caching_none_to_value_rebuilds` | Transition from None to a heading value — image changes | important |
 | `test_caching_value_to_none_rebuilds` | Transition from heading value to None — switches to placeholder | important |
 | `test_show_values_false_suppresses_numeric_labels` | With `show_values=False`, only cardinal/intercardinal labels are drawn (verify by checking that numeric degree text is absent — check pixel content at expected label positions, or just verify no crash) | nice-to-have |
+| `test_show_border_false_no_outline` | With `show_border=False`, the background rectangle has no outline (check edge pixels are transparent or bg-only) | important |
+| `test_show_border_true_has_outline` | With `show_border=True` (default), the background rectangle has an fg-coloured outline | important |
 | `test_custom_colours` | Custom `bg`, `fg`, `marker_rgb` — no crash, image produced | nice-to-have |
 
 ### Approval tests (with `@pytest.mark.gfx` + `@approve_image`)
@@ -286,6 +288,11 @@ The layout editor is a standalone GUI tool. Testing focuses on the pure function
 | `test_auto_gauge_ranges_with_route_data` | `_auto_gauge_ranges()` with known min/max route data produces sensible ranges (speed_max > speed_min, etc.) | important |
 | `test_gauge_colour_attrs_per_style` | `_gauge_colour_attrs("dark")` returns different colours than `_gauge_colour_attrs("light")` | important |
 | `test_load_layout_xml_roundtrip` | `generate_layout_xml()` output can be parsed by `load_layout_xml()` without error | critical |
+| `test_load_layout_xml_time_only_format` | `load_layout_xml()` with a `time_only` composite stores the format as `time_format` (not `date_format`) in `custom_props` | critical |
+| `test_load_layout_xml_date_only_format` | `load_layout_xml()` with a `date_only` composite stores the format as `date_format` in `custom_props` | critical |
+| `test_load_layout_xml_date_and_time_formats` | `load_layout_xml()` with `date_and_time` composite stores first datetime as `date_format` and second as `time_format` | critical |
+| `test_generate_layout_xml_time_truncate_with_microseconds` | When `time_format` contains `%f`, generated XML includes `truncate="5"` | critical |
+| `test_generate_layout_xml_time_no_truncate_without_microseconds` | When `time_format` is `%H:%M` (no `%f`), generated XML does NOT include `truncate` | critical |
 | `test_scan_route_ranges_from_xlsx` | `_scan_route_ranges()` with a test XLSX file returns a dict with speed, battery, voltage, current ranges | important |
 | `test_preprocess_gpx_integration` | Full round-trip: EUC World GPX with `<speed>` in km/h -> preprocess -> load -> verify speed in m/s | important |
 
