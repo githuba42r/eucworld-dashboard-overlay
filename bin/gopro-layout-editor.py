@@ -1031,6 +1031,25 @@ def load_layout_xml(xml_path: Path, components: list[OverlayComponent]):
             if child_type in ("text", "datetime", "metric_unit") and child.get("size"):
                 data.setdefault("custom_props", {})["text_size"] = int(child.get("size"))
 
+            # Datetime format strings
+            if child_type == "datetime" and child.get("format"):
+                fmt = child.get("format")
+                # First datetime in composite = date, second = time
+                if "date_format" not in data.get("custom_props", {}):
+                    data.setdefault("custom_props", {})["date_format"] = fmt
+                else:
+                    data.setdefault("custom_props", {})["time_format"] = fmt
+                # Also extract size for date/time
+                if child.get("size"):
+                    s = int(child.get("size"))
+                    if "date_size" not in data.get("custom_props", {}):
+                        data.setdefault("custom_props", {})["date_size"] = s
+                    else:
+                        data.setdefault("custom_props", {})["time_size"] = s
+                # Extract align
+                if child.get("align"):
+                    data.setdefault("custom_props", {})["dt_align"] = child.get("align")
+
             # Title text content
             if child_type == "text" and child.text and child.get("align") in ("center", "centre"):
                 data.setdefault("custom_props", {})["comp_title"] = child.text
@@ -2206,6 +2225,11 @@ class LayoutEditorApp(tk.Tk):
                 if comp.name == "moving_map" and comp.enabled:
                     self.map_size.set(comp.width)
                     self.map_size_label.config(text=str(comp.width))
+                if comp.name == "date_and_time" and comp.enabled:
+                    if "date_format" in comp.custom_props:
+                        self.date_format.set(comp.custom_props["date_format"])
+                    if "time_format" in comp.custom_props:
+                        self.time_format.set(comp.custom_props["time_format"])
             self._rebuild_component_checkboxes()
             self._redraw_components()
             self.status_var.set(f"Layout loaded: {Path(path).name}")
