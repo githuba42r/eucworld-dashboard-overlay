@@ -1901,10 +1901,10 @@ class LayoutEditorApp(tk.Tk):
 
         # Reset components for this resolution
         self.components = default_component_positions(video.eff_width, video.eff_height)
-        # Apply pending layout XML if one was specified before a video was loaded
-        pending = getattr(self, "_pending_layout_xml", None)
-        if pending:
-            self._load_layout_xml(pending)
+        # Reapply layout XML — either a pending CLI layout or a previously loaded one
+        layout = getattr(self, "_pending_layout_xml", None) or getattr(self, "_loaded_layout_path", None)
+        if layout:
+            self._load_layout_xml(layout)
             self._pending_layout_xml = None
         self._rebuild_component_checkboxes()
 
@@ -2245,6 +2245,7 @@ class LayoutEditorApp(tk.Tk):
                 if comp.name in ("date_and_time", "time_only") and comp.enabled:
                     if "time_format" in comp.custom_props:
                         self.time_format.set(comp.custom_props["time_format"])
+            self._loaded_layout_path = str(path)
             self._rebuild_component_checkboxes()
             self._redraw_components()
             self.status_var.set(f"Layout loaded: {Path(path).name}")
