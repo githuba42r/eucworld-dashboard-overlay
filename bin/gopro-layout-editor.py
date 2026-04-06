@@ -999,24 +999,27 @@ def load_layout_xml(xml_path: Path, components: list[OverlayComponent]):
         for child in elem:
             child_type = child.get("type", "")
 
-            # Chart: width/height on chart component sets the composite size
+            # Chart: width/height from chart component (only if composite didn't set them)
             if child_type == "chart":
-                if child.get("width"):
+                if child.get("width") and "width" not in data:
                     data["width"] = int(child.get("width"))
-                if child.get("height"):
+                if child.get("height") and "height" not in data:
                     data["height"] = int(child.get("height"))
 
             # Gauge style from type attribute
             if child_type.startswith("cairo-gauge"):
                 data.setdefault("custom_props", {})["gauge_style"] = child_type
 
-            # Map component size
+            # Map/gauge component size — only set width/height if composite
+            # didn't already specify them (composite dimensions are the preview size)
             if child_type in ("moving_map", "journey_map", "moving-journey-map",
                               "compass", "compass-arrow", "cairo-circuit-map",
                               "asi", "msi2") and child.get("size"):
                 s = int(child.get("size"))
-                data["width"] = s
-                data["height"] = s
+                if "width" not in data:
+                    data["width"] = s
+                if "height" not in data:
+                    data["height"] = s
                 data.setdefault("custom_props", {})["gauge_size"] = s
 
             # Speed font size
