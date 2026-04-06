@@ -1023,8 +1023,18 @@ def load_layout_xml(xml_path: Path, components: list[OverlayComponent]):
             # Title text content
             if child_type == "text" and child.text and child.get("align") == "center":
                 data.setdefault("custom_props", {})["comp_title"] = child.text
+                data.setdefault("custom_props", {})["show_title"] = "true"
+                if child.get("size"):
+                    data["custom_props"]["title_size"] = int(child.get("size"))
+                if child.get("rgb"):
+                    data["custom_props"]["title_rgb"] = child.get("rgb")
             elif child_type == "text" and child.text and child.get("x") == "4" and child.get("y") == "2":
                 data.setdefault("custom_props", {})["comp_title"] = child.text
+                data.setdefault("custom_props", {})["show_title"] = "true"
+                if child.get("size"):
+                    data["custom_props"]["title_size"] = int(child.get("size"))
+                if child.get("rgb"):
+                    data["custom_props"]["title_rgb"] = child.get("rgb")
 
             # Extract all mapped attributes from children
             for attr, val in child.attrib.items():
@@ -1222,9 +1232,10 @@ def generate_layout_xml(components: list[OverlayComponent], map_props: dict,
                 fmt_vars[k] = v
             # Build gauge colour attributes based on selected style
             fmt_vars["gauge_colour_attrs"] = _gauge_colour_attrs(comp, fmt_vars)
-            # Build title lines — empty string when no title set
+            # Build title lines — only when show_title is enabled and title text is set
+            show_title = str(fmt_vars.get("show_title", "false")).lower() in ("true", "1", "yes")
             title = str(fmt_vars.get("comp_title", "")).strip()
-            if title:
+            if show_title and title:
                 ts = fmt_vars.get("title_size", 14)
                 tr = fmt_vars.get("title_rgb", "255,255,255")
                 tx = fmt_vars.get("title_x", 128)
@@ -1703,6 +1714,7 @@ class LayoutEditorApp(tk.Tk):
             "label_rgb": "255,255,255",
             "value_rgb": "255,255,255",
             # Component title defaults
+            "show_title": "false",
             "comp_title": "",
             "title_size": 14,
             "title_rgb": "255,255,255",
@@ -2399,6 +2411,7 @@ COMPONENT_OPTIONS = {
     "gradient_chart": {
         "title": "Altitude Chart Options",
         "fields": [
+            ("show_title", "Show Title", "checkbox", False, []),
             ("comp_title", "Chart Title", "entry", "Altitude", []),
             ("title_size", "Title Font Size", "spinbox", 14, (8, 32, 2)),
             ("title_rgb", "Title Colour (R,G,B)", "colour_select", "255,255,255", []),
@@ -2414,6 +2427,7 @@ COMPONENT_OPTIONS = {
     "battery_chart": {
         "title": "Battery Chart Options",
         "fields": [
+            ("show_title", "Show Title", "checkbox", False, []),
             ("comp_title", "Chart Title", "entry", "Battery %", []),
             ("title_size", "Title Font Size", "spinbox", 14, (8, 32, 2)),
             ("title_rgb", "Title Colour (R,G,B)", "colour_select", "255,255,255", []),
@@ -2422,6 +2436,7 @@ COMPONENT_OPTIONS = {
     "voltage_chart": {
         "title": "Voltage Chart Options",
         "fields": [
+            ("show_title", "Show Title", "checkbox", False, []),
             ("comp_title", "Chart Title", "entry", "Voltage", []),
             ("title_size", "Title Font Size", "spinbox", 14, (8, 32, 2)),
             ("title_rgb", "Title Colour (R,G,B)", "colour_select", "255,255,255", []),
@@ -2430,6 +2445,7 @@ COMPONENT_OPTIONS = {
     "power_chart": {
         "title": "Power Chart Options",
         "fields": [
+            ("show_title", "Show Title", "checkbox", False, []),
             ("comp_title", "Chart Title", "entry", "Power", []),
             ("title_size", "Title Font Size", "spinbox", 14, (8, 32, 2)),
             ("title_rgb", "Title Colour (R,G,B)", "colour_select", "255,255,255", []),
@@ -2481,6 +2497,7 @@ COMPONENT_OPTIONS = {
             ("gauge_style", "Gauge Style", "combo", "cairo-gauge-round-annotated",
              ["cairo-gauge-round-annotated", "cairo-gauge-arc-annotated", "cairo-gauge-donut", "cairo-gauge-marker"]),
             ("gauge_size", "Size", "spinbox", 256, (64, 512, 16)),
+            ("show_title", "Show Title", "checkbox", False, []),
             ("comp_title", "Gauge Title", "entry", "Speed", []),
             ("title_size", "Title Font Size", "spinbox", 14, (8, 32, 2)),
             ("title_rgb", "Title Colour (R,G,B)", "colour_select", "255,255,255", []),
@@ -2502,6 +2519,7 @@ COMPONENT_OPTIONS = {
             ("gauge_style", "Gauge Style", "combo", "cairo-gauge-donut",
              ["cairo-gauge-donut", "cairo-gauge-round-annotated", "cairo-gauge-arc-annotated", "cairo-gauge-marker"]),
             ("gauge_size", "Size", "spinbox", 256, (64, 512, 16)),
+            ("show_title", "Show Title", "checkbox", False, []),
             ("comp_title", "Gauge Title", "entry", "Battery", []),
             ("title_size", "Title Font Size", "spinbox", 14, (8, 32, 2)),
             ("title_rgb", "Title Colour (R,G,B)", "colour_select", "255,255,255", []),
@@ -2523,6 +2541,7 @@ COMPONENT_OPTIONS = {
             ("gauge_style", "Gauge Style", "combo", "cairo-gauge-arc-annotated",
              ["cairo-gauge-arc-annotated", "cairo-gauge-round-annotated", "cairo-gauge-donut", "cairo-gauge-marker"]),
             ("gauge_size", "Size", "spinbox", 256, (64, 512, 16)),
+            ("show_title", "Show Title", "checkbox", False, []),
             ("comp_title", "Gauge Title", "entry", "Power", []),
             ("title_size", "Title Font Size", "spinbox", 14, (8, 32, 2)),
             ("title_rgb", "Title Colour (R,G,B)", "colour_select", "255,255,255", []),
@@ -2545,6 +2564,7 @@ COMPONENT_OPTIONS = {
             ("gauge_style", "Gauge Style", "combo", "cairo-gauge-marker",
              ["cairo-gauge-marker", "cairo-gauge-round-annotated", "cairo-gauge-arc-annotated", "cairo-gauge-donut"]),
             ("gauge_size", "Size", "spinbox", 256, (64, 512, 16)),
+            ("show_title", "Show Title", "checkbox", False, []),
             ("comp_title", "Gauge Title", "entry", "Voltage", []),
             ("title_size", "Title Font Size", "spinbox", 14, (8, 32, 2)),
             ("title_rgb", "Title Colour (R,G,B)", "colour_select", "255,255,255", []),
