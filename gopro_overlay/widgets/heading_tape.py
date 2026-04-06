@@ -23,6 +23,7 @@ class HeadingTape(Widget):
         label_interval: int = 30,
         visible_range: int = 90,
         show_values: bool = True,
+        show_border: bool = True,
         bg: Tuple[int, ...] = (0, 0, 0),
         fg: Tuple[int, ...] = (255, 255, 255),
         marker_rgb: Tuple[int, ...] = (255, 0, 0),
@@ -36,6 +37,7 @@ class HeadingTape(Widget):
         self.label_interval = label_interval
         self.visible_range = max(10, visible_range)
         self.show_values = show_values
+        self.show_border = show_border
         self.bg = bg
         self.fg = fg
         self.marker_rgb = marker_rgb
@@ -49,7 +51,8 @@ class HeadingTape(Widget):
         draw = ImageDraw.Draw(image)
 
         bg_colour = self.bg[:3] + (self.opacity,) if len(self.bg) < 4 else self.bg
-        draw.rectangle([(0, 0), (self.width - 1, self.height - 1)], fill=bg_colour, outline=self.fg, width=1)
+        outline = self.fg if self.show_border else None
+        draw.rectangle([(0, 0), (self.width - 1, self.height - 1)], fill=bg_colour, outline=outline, width=1)
         draw.text((self.width / 2, self.height / 2), "---", font=self.font, anchor="mm", fill=self.fg)
 
         # Dimmed upward-pointing marker at top

@@ -626,7 +626,7 @@ class Widgets:
         )
 
     @allow_attributes({"width", "height", "metric", "size", "tick-interval", "label-interval",
-                        "visible-range", "show-values", "bg", "fg", "marker-rgb", "opacity"})
+                        "visible-range", "show-values", "show-border", "bg", "fg", "marker-rgb", "opacity"})
     def create_heading_tape(self, element: ET.Element, entry, **kwargs) -> Widget:
         accessor = metric_accessor_from(attrib(element, "metric", d="cog"))
         reading = lambda: nonesafe(accessor(entry()))
@@ -639,6 +639,7 @@ class Widgets:
             label_interval=iattrib(element, "label-interval", d=30),
             visible_range=iattrib(element, "visible-range", d=90),
             show_values=attrib(element, "show-values", d="true").lower() in ("true", "1", "yes"),
+            show_border=attrib(element, "show-border", d="true").lower() in ("true", "1", "yes"),
             bg=rgbattr(element, "bg", d=(0, 0, 0)),
             fg=rgbattr(element, "fg", d=(255, 255, 255)),
             marker_rgb=rgbattr(element, "marker-rgb", d=(255, 0, 0)),
