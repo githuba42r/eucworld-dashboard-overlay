@@ -935,7 +935,37 @@ def load_layout_xml(xml_path: Path, components: list[OverlayComponent]):
     tree = ET.parse(xml_path)
     root = tree.getroot()
 
-    # Build a map of name -> dict of parsed properties from the XML
+    # Map XML attribute names to template variable names
+    _XML_TO_PROP = {
+        # Chart attributes
+        "filled": "chart_filled", "seconds": "chart_seconds",
+        # Gauge attributes
+        "max": "gauge_max", "min": "gauge_min",
+        "start": "gauge_start", "length": "gauge_length",
+        "sectors": "gauge_sectors",
+        "background-rgb": "gauge_bg", "needle-rgb": "gauge_needle",
+        "major-tick-rgb": "gauge_tick", "minor-tick-rgb": "gauge_tick",
+        "major-ann-rgb": "gauge_ann", "minor-ann-rgb": "gauge_ann",
+        "tick-rgb": "gauge_tick", "gauge-rgb": "gauge_fill",
+        "arc-inner-rgb": "regen_colour",
+        # MSI attributes
+        "green": "msi_green", "yellow": "msi_yellow",
+        "end": "msi_end", "rotate": "msi_rotate",
+        "textsize": "msi_textsize",
+        # Map attributes
+        "zoom": "map_zoom", "corner_radius": "map_corner_radius",
+        "opacity": "map_opacity",
+        # Heading tape
+        "tick-interval": "ht_tick_interval",
+        # Text colours
+        "rgb": "value_rgb",
+        # Title
+        "align": None,  # skip — internal positioning
+    }
+    # Attributes to skip (used for positioning, not properties)
+    _SKIP = {"x", "y", "type", "name", "metric", "units", "dp", "format",
+             "truncate", "cache", "file", "width", "height", "size", "align"}
+
     comp_data: dict[str, dict] = {}
 
     for elem in root:
@@ -947,8 +977,7 @@ def load_layout_xml(xml_path: Path, components: list[OverlayComponent]):
             "y": int(elem.get("y", "0")),
         }
 
-        # Extract size info from the element itself
-        # Square components (maps) use "size", composites use "width"/"height"
+        # Extract size from the element itself
         if elem.get("size"):
             s = int(elem.get("size"))
             data["width"] = s
@@ -958,37 +987,76 @@ def load_layout_xml(xml_path: Path, components: list[OverlayComponent]):
         if elem.get("height"):
             data["height"] = int(elem.get("height"))
 
-        # Scan children for size-carrying attributes
+        # Scan children and extract all attributes as custom_props
         for child in elem:
-            tag = child.tag.lower() if child.tag else ""
             child_type = child.get("type", "")
 
-            # Chart: width and height on <component type="chart">
+            # Chart: width/height on chart component sets the composite size
             if child_type == "chart":
                 if child.get("width"):
                     data["width"] = int(child.get("width"))
                 if child.get("height"):
                     data["height"] = int(child.get("height"))
-                # Restore chart-specific props
+
+            # Gauge style from type attribute
+            if child_type.startswith("cairo-gauge"):
+                data.setdefault("custom_props", {})["gauge_style"] = child_type
+
+            # Map component size
+            if child_type in ("moving_map", "journey_map", "moving-journey-map",
+                              "compass", "compass-arrow", "cairo-circuit-map",
+                              "asi", "msi2") and child.get("size"):
+                s = int(child.get("size"))
+                data["width"] = s
+                data["height"] = s
+                data.setdefault("custom_props", {})["gauge_size"] = s
+
+            # Speed font size
+            if child_type == "metric" and child.get("size"):
+                data.setdefault("custom_props", {})["speed_font_size"] = int(child.get("size"))
+                data.setdefault("custom_props", {})["value_font_size"] = int(child.get("size"))
+
+            # Label font size
+            if child_type in ("text", "datetime", "metric_unit") and child.get("size"):
+                data.setdefault("custom_props", {})["text_size"] = int(child.get("size"))
+
+            # Title text content
+            if child_type == "text" and child.text and child.get("align") == "center":
+                data.setdefault("custom_props", {})["comp_title"] = child.text
+            elif child_type == "text" and child.text and child.get("x") == "4" and child.get("y") == "2":
+                data.setdefault("custom_props", {})["comp_title"] = child.text
+
+            # Extract all mapped attributes from children
+            for attr, val in child.attrib.items():
+                if attr in _SKIP:
+                    continue
+                prop_name = _XML_TO_PROP.get(attr)
+                if prop_name is None:
+                    continue
+                # Try to parse as int, fall back to string
+                try:
+                    val = int(val)
+                except (ValueError, TypeError):
+                    try:
+                        val = float(val)
+                    except (ValueError, TypeError):
+                        pass
+                data.setdefault("custom_props", {})[prop_name] = val
+
+            # Chart-specific: prefix with chart_
+            if child_type == "chart":
                 for attr in ("filled", "seconds", "bg", "fill", "line"):
                     val = child.get(attr)
                     if val is not None:
-                        key = f"chart_{attr}"
-                        data.setdefault("custom_props", {})[key] = val
+                        data.setdefault("custom_props", {})[f"chart_{attr}"] = val
 
-            # Speed: font size from <component type="metric"> size attr
-            if child_type == "metric" and child.get("size"):
-                font_size = int(child.get("size"))
-                data.setdefault("custom_props", {})["speed_font_size"] = font_size
-
-            # Metric value font size for gradient/altitude
-            if child_type == "metric" and name in ("gradient", "altitude"):
-                if child.get("size"):
-                    data.setdefault("custom_props", {})["value_font_size"] = int(child.get("size"))
-
-            # Text/label font size
-            if child_type in ("text", "datetime", "metric_unit") and child.get("size"):
-                data.setdefault("custom_props", {})["text_size"] = int(child.get("size"))
+            # Colour attributes from text components
+            if child_type == "text" and child.get("rgb"):
+                # Only set label_rgb from non-title text components
+                if child.text and child.text not in (
+                    data.get("custom_props", {}).get("comp_title", ""),
+                ):
+                    data.setdefault("custom_props", {})["label_rgb"] = child.get("rgb")
 
         comp_data[name] = data
 
