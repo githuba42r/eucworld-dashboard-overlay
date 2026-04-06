@@ -206,22 +206,22 @@ COMPONENT_DEFS = [
     # -- Gauges --
     ("speed_gauge", "Speed Gauge", 256, 256, "#ff6644",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="speed_gauge">
-        <component type="{gauge_style}" size="{gauge_size}" metric="speed" units="kph" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}" background-rgb="{gauge_bg}" needle-rgb="{gauge_needle}" major-tick-rgb="{gauge_tick}" minor-tick-rgb="{gauge_tick}" major-ann-rgb="{gauge_ann}" minor-ann-rgb="{gauge_ann}" tick-rgb="{gauge_tick}" gauge-rgb="{gauge_fill}"/>
+        <component type="{gauge_style}" size="{gauge_size}" metric="speed" units="kph" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"{gauge_colour_attrs}"/>
     </composite>'''),
 
     ("battery_gauge", "Battery Gauge", 256, 256, "#44bb44",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="battery_gauge">
-        <component type="{gauge_style}" size="{gauge_size}" metric="battery" units="percent" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}" background-rgb="{gauge_bg}" needle-rgb="{gauge_needle}" major-tick-rgb="{gauge_tick}" minor-tick-rgb="{gauge_tick}" major-ann-rgb="{gauge_ann}" minor-ann-rgb="{gauge_ann}" tick-rgb="{gauge_tick}" gauge-rgb="{gauge_fill}"/>
+        <component type="{gauge_style}" size="{gauge_size}" metric="battery" units="percent" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"{gauge_colour_attrs}"/>
     </composite>'''),
 
     ("power_gauge", "Power Gauge", 256, 256, "#bb4488",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="power_gauge">
-        <component type="{gauge_style}" size="{gauge_size}" metric="power" units="watt" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}" background-rgb="{gauge_bg}" needle-rgb="{gauge_needle}" major-tick-rgb="{gauge_tick}" minor-tick-rgb="{gauge_tick}" major-ann-rgb="{gauge_ann}" minor-ann-rgb="{gauge_ann}" tick-rgb="{gauge_tick}" gauge-rgb="{gauge_fill}"/>
+        <component type="{gauge_style}" size="{gauge_size}" metric="power" units="watt" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"{gauge_colour_attrs}"/>
     </composite>'''),
 
     ("voltage_gauge", "Voltage Gauge", 256, 256, "#bbbb44",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="voltage_gauge">
-        <component type="{gauge_style}" size="{gauge_size}" metric="voltage" units="volt" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}" background-rgb="{gauge_bg}" needle-rgb="{gauge_needle}" major-tick-rgb="{gauge_tick}" minor-tick-rgb="{gauge_tick}" major-ann-rgb="{gauge_ann}" minor-ann-rgb="{gauge_ann}" tick-rgb="{gauge_tick}" gauge-rgb="{gauge_fill}"/>
+        <component type="{gauge_style}" size="{gauge_size}" metric="voltage" units="volt" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"{gauge_colour_attrs}"/>
     </composite>'''),
 
     ("compass_display", "Compass", 256, 256, "#6688cc",
@@ -1029,6 +1029,29 @@ def _auto_gauge_ranges(comp: OverlayComponent, route_ranges: dict) -> dict:
     return {}
 
 
+def _gauge_colour_attrs(comp: OverlayComponent, fmt_vars: dict) -> str:
+    """Build the colour XML attributes string for the selected gauge style."""
+    style = fmt_vars.get("gauge_style", "cairo-gauge-round-annotated")
+    bg = fmt_vars.get("gauge_bg", "255,255,255,150")
+    needle = fmt_vars.get("gauge_needle", "255,0,0")
+    tick = fmt_vars.get("gauge_tick", "0,0,0")
+    ann = fmt_vars.get("gauge_ann", "0,0,0")
+    fill = fmt_vars.get("gauge_fill", "0,191,255")
+
+    if style == "cairo-gauge-marker":
+        return (f' tick-rgb="{tick}" background-rgb="{bg}"'
+                f' gauge-rgb="{fill}"')
+    elif style == "cairo-gauge-donut":
+        return (f' needle-rgb="{needle}"'
+                f' major-tick-rgb="{tick}" minor-tick-rgb="{tick}"'
+                f' major-ann-rgb="{ann}" minor-ann-rgb="{ann}"')
+    else:
+        # round-annotated and arc-annotated
+        return (f' background-rgb="{bg}" needle-rgb="{needle}"'
+                f' major-tick-rgb="{tick}" minor-tick-rgb="{tick}"'
+                f' major-ann-rgb="{ann}" minor-ann-rgb="{ann}"')
+
+
 def generate_layout_xml(components: list[OverlayComponent], map_props: dict,
                         route_ranges: Optional[dict] = None) -> str:
     """Generate layout XML from current component positions."""
@@ -1050,6 +1073,8 @@ def generate_layout_xml(components: list[OverlayComponent], map_props: dict,
             # Per-component overrides (manual settings take precedence)
             for k, v in comp.custom_props.items():
                 fmt_vars[k] = v
+            # Build gauge colour attributes based on selected style
+            fmt_vars["gauge_colour_attrs"] = _gauge_colour_attrs(comp, fmt_vars)
             xml = comp.xml_template.format(**fmt_vars)
             lines.append(xml)
             lines.append("")
