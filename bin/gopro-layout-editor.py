@@ -1214,7 +1214,7 @@ class LayoutEditorApp(tk.Tk):
         self.bind_all("<Control-g>", lambda e: self._open_gpx())
         self.bind_all("<Control-o>", lambda e: self._add_videos())
         self.bind_all("<Control-q>", lambda e: self.quit())
-        self.bind_all("<Delete>", lambda e: self._remove_video())
+        # Delete key disabled — was accidentally clearing videos
 
         # Main layout: left panel | canvas + slider | right panel
         main_pane = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
@@ -2399,6 +2399,8 @@ class ComponentOptionsDialog(tk.Toplevel):
         self.grab_set()
 
         self._build_ui(opts)
+        self.bind("<Return>", lambda e: self._apply())
+        self.bind("<Escape>", lambda e: self.destroy())
 
     def _build_ui(self, opts: dict):
         # Scrollable content area
@@ -3264,6 +3266,8 @@ class SyncDialog(tk.Toplevel):
 
         # Resize handler
         self.bind("<Configure>", self._on_resize)
+        self.bind("<Escape>", lambda e: self.destroy())
+        self.bind("<Return>", lambda e: self._apply())
         self._last_resize_w = 0
         self.focus_set()
 
@@ -3670,6 +3674,8 @@ class ApiKeysDialog(tk.Toplevel):
         self.grab_set()
 
         self._build_ui()
+        self.bind("<Return>", lambda e: self._apply())
+        self.bind("<Escape>", lambda e: self.destroy())
 
     def _build_ui(self):
         ttk.Label(self, text="Map Tile API Keys",
@@ -3756,6 +3762,8 @@ class FontSelectorDialog(tk.Toplevel):
 
         self._build_ui()
         self._load_fonts()
+        self.bind("<Return>", lambda e: self._apply())
+        self.bind("<Escape>", lambda e: self.destroy())
 
     def _build_ui(self):
         ttk.Label(self, text="Select a font for the overlay:",
@@ -3905,6 +3913,7 @@ class EncodingDialog(tk.Toplevel):
         self.cancelled = False
 
         self._build_ui()
+        self.bind("<Escape>", lambda e: self._cancel())
         self.after(100, self._start_encoding)
 
     def _build_ui(self):
