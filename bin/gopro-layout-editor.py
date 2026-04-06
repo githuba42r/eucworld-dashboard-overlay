@@ -251,12 +251,14 @@ COMPONENT_DEFS = [
     ("speed_bar", "Speed Bar", 400, 30, "#ff8844",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="speed_bar">
         <component type="bar" width="{w}" height="{h}" metric="speed" units="kph" max="{gauge_max}" min="0" outline="255,255,255,128" fill="255,136,68,200"/>
+{bar_scale_line}
 {chart_title_line}
     </composite>'''),
 
     ("battery_bar", "Battery Bar", 400, 30, "#44bb44",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="battery_bar">
         <component type="bar" width="{w}" height="{h}" metric="battery" units="percent" max="100" min="0" outline="255,255,255,128" fill="68,187,68,200"/>
+{bar_scale_line}
 {chart_title_line}
     </composite>'''),
 
@@ -304,12 +306,14 @@ COMPONENT_DEFS = [
     ("avg_speed_bar", "Avg Speed Bar", 400, 30, "#ff9944",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="avg_speed_bar">
         <component type="bar" width="{w}" height="{h}" metric="avg-speed" units="kph" max="{gauge_max}" min="0" outline="255,255,255,128" fill="255,153,68,200"/>
+{bar_scale_line}
 {chart_title_line}
     </composite>'''),
 
     ("avg_speed_moving_bar", "Avg Moving Bar", 400, 30, "#ffbb44",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="avg_speed_moving_bar">
         <component type="bar" width="{w}" height="{h}" metric="avg-speed-moving" units="kph" max="{gauge_max}" min="0" outline="255,255,255,128" fill="255,187,68,200"/>
+{bar_scale_line}
 {chart_title_line}
     </composite>'''),
 
@@ -1251,6 +1255,20 @@ def generate_layout_xml(components: list[OverlayComponent], map_props: dict,
             else:
                 fmt_vars["chart_title_line"] = ""
                 fmt_vars["gauge_title_line"] = ""
+            # Build bar scale labels — min/max at ends of bar
+            show_scale = str(fmt_vars.get("show_bar_scale", "true")).lower() in ("true", "1", "yes")
+            if show_scale and comp.name.endswith("_bar"):
+                bw = comp.width
+                bh = comp.height
+                g_max = fmt_vars.get("gauge_max", 100)
+                scale_size = max(8, min(14, bh - 4))
+                sr = fmt_vars.get("title_rgb", "255,255,255")
+                fmt_vars["bar_scale_line"] = (
+                    f'        <component type="text" x="2" y="0" size="{scale_size}" rgb="{sr}">0</component>\n'
+                    f'        <component type="text" x="{bw - 2}" y="0" size="{scale_size}" rgb="{sr}" align="right">{g_max}</component>'
+                )
+            else:
+                fmt_vars["bar_scale_line"] = ""
             xml = comp.xml_template.format(**fmt_vars)
             lines.append(xml)
             lines.append("")
@@ -2557,6 +2575,7 @@ COMPONENT_OPTIONS = {
     "avg_speed_bar": {
         "title": "Avg Speed Bar Options",
         "fields": [
+            ("show_bar_scale", "Show Min/Max Scale", "checkbox", True, []),
             ("gauge_max", "Max Speed (kph)", "spinbox", 60, (20, 200, 10)),
             ("show_title", "Show Title", "checkbox", False, []),
             ("comp_title", "Bar Title", "entry", "Avg Speed", []),
@@ -2567,6 +2586,7 @@ COMPONENT_OPTIONS = {
     "avg_speed_moving_bar": {
         "title": "Avg Moving Speed Bar Options",
         "fields": [
+            ("show_bar_scale", "Show Min/Max Scale", "checkbox", True, []),
             ("gauge_max", "Max Speed (kph)", "spinbox", 60, (20, 200, 10)),
             ("show_title", "Show Title", "checkbox", False, []),
             ("comp_title", "Bar Title", "entry", "Avg Moving", []),
@@ -2684,6 +2704,7 @@ COMPONENT_OPTIONS = {
     "speed_bar": {
         "title": "Speed Bar Options",
         "fields": [
+            ("show_bar_scale", "Show Min/Max Scale", "checkbox", True, []),
             ("gauge_max", "Max Speed (kph)", "spinbox", 60, (20, 200, 10)),
             ("show_title", "Show Title", "checkbox", False, []),
             ("comp_title", "Bar Title", "entry", "Speed", []),
@@ -2694,6 +2715,7 @@ COMPONENT_OPTIONS = {
     "battery_bar": {
         "title": "Battery Bar Options",
         "fields": [
+            ("show_bar_scale", "Show Min/Max Scale", "checkbox", True, []),
             ("show_title", "Show Title", "checkbox", False, []),
             ("comp_title", "Bar Title", "entry", "Battery", []),
             ("title_size", "Title Font Size", "spinbox", 14, (8, 32, 2)),
