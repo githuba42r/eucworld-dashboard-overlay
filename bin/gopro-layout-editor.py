@@ -216,7 +216,7 @@ COMPONENT_DEFS = [
 
     ("power_gauge", "Power Gauge", 256, 256, "#bb4488",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="power_gauge">
-        <component type="{gauge_style}" size="{gauge_size}" metric="power" units="watt" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"{gauge_colour_attrs}/>
+        <component type="{gauge_style}" size="{gauge_size}" metric="power" units="watt" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}" arc-value-lower="{gauge_min}" arc-value-upper="0"{gauge_colour_attrs} arc-inner-rgb="{regen_colour}" arc-outer-rgb="{regen_colour}"/>
     </composite>'''),
 
     ("voltage_gauge", "Voltage Gauge", 256, 256, "#bbbb44",
@@ -1584,6 +1584,7 @@ class LayoutEditorApp(tk.Tk):
             "gauge_tick": "0,0,0",
             "gauge_ann": "0,0,0",
             "gauge_fill": "0,191,255",
+            "regen_colour": "68,187,68,180",
             # Sub-component colour defaults
             "label_rgb": "255,255,255",
             "value_rgb": "255,255,255",
@@ -2379,6 +2380,7 @@ COMPONENT_OPTIONS = {
             ("gauge_tick", "Tick Marks (R,G,B)", "colour_select", "0,0,0", []),
             ("gauge_ann", "Annotations (R,G,B)", "colour_select", "0,0,0", []),
             ("gauge_fill", "Gauge Fill (R,G,B)", "colour_select", "0,191,255", []),
+            ("regen_colour", "Regen Zone (R,G,B,A)", "colour_select", "68,187,68,180", []),
         ],
     },
     "voltage_gauge": {
