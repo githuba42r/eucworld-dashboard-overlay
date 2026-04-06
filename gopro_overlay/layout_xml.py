@@ -25,6 +25,7 @@ from .widgets.bar import Bar
 from .widgets.chart import SimpleChart
 from .widgets.compass import Compass
 from .widgets.compass_arrow import CompassArrow
+from .widgets.heading_tape import HeadingTape
 from .widgets.gps import GPSLock
 from .widgets.gradient_bar import GradientBar
 from .widgets.map import MovingJourneyMap, Circuit
@@ -622,6 +623,22 @@ class Widgets:
             text=rgbattr(element, "text", d=(255, 255, 255)),
             outline=rgbattr(element, "outline", d=(0, 0, 0)),
             arrow_outline=rgbattr(element, "arrow-outline", d=(0, 0, 0)),
+        )
+
+    @allow_attributes({"width", "height", "metric", "size", "tick-interval", "bg", "fg", "marker-rgb", "opacity"})
+    def create_heading_tape(self, element: ET.Element, entry, **kwargs) -> Widget:
+        accessor = metric_accessor_from(attrib(element, "metric", d="cog"))
+        reading = lambda: nonesafe(accessor(entry()))
+        return HeadingTape(
+            width=iattrib(element, "width", d=400),
+            height=iattrib(element, "height", d=60),
+            reading=reading,
+            font=self._font(element, "size", d=16),
+            tick_interval=iattrib(element, "tick-interval", d=10),
+            bg=rgbattr(element, "bg", d=(0, 0, 0)),
+            fg=rgbattr(element, "fg", d=(255, 255, 255)),
+            marker_rgb=rgbattr(element, "marker-rgb", d=(255, 0, 0)),
+            opacity=iattrib(element, "opacity", d=180),
         )
 
     @allow_attributes({"width", "height", "metric", "units", "fill", "zero", "bar",

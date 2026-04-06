@@ -297,6 +297,12 @@ COMPONENT_DEFS = [
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="avg_speed_moving_bar">
         <component type="bar" width="{w}" height="{h}" metric="avg-speed-moving" units="kph" max="{gauge_max}" min="0" outline="255,255,255,128" fill="255,187,68,200"/>
     </composite>'''),
+
+    # -- Heading tape --
+    ("heading_tape", "Heading Tape", 400, 60, "#cc6644",
+     '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="heading_tape">
+        <component type="heading-tape" width="{w}" height="{h}" size="{ht_font_size}" tick-interval="{ht_tick_interval}" bg="{ht_bg}" fg="{ht_fg}" marker-rgb="{ht_marker}" opacity="{ht_opacity}"/>
+    </composite>'''),
 ]
 
 MAP_STYLES = [
@@ -873,6 +879,7 @@ def default_component_positions(eff_w: int, eff_h: int) -> list[OverlayComponent
         "avg_speed_moving_gauge": (int(680 * s), int(760 * s)),
         "avg_speed_bar": (16, speed_y + int(260 * s)),
         "avg_speed_moving_bar": (16, speed_y + int(300 * s)),
+        "heading_tape": ((eff_w - 400) // 2, 30),
     }
 
     # Default enabled/disabled
@@ -886,7 +893,8 @@ def default_component_positions(eff_w: int, eff_h: int) -> list[OverlayComponent
                  "moving_journey_map", "circuit_map", "asi_gauge", "msi_gauge",
                  "avg_speed_value", "avg_speed_moving_value",
                  "avg_speed_gauge", "avg_speed_moving_gauge",
-                 "avg_speed_bar", "avg_speed_moving_bar"}
+                 "avg_speed_bar", "avg_speed_moving_bar",
+                 "heading_tape"}
 
     components = []
     for name, label, ref_w, ref_h, color, xml_tmpl in COMPONENT_DEFS:
@@ -1579,6 +1587,13 @@ class LayoutEditorApp(tk.Tk):
             # Sub-component colour defaults
             "label_rgb": "255,255,255",
             "value_rgb": "255,255,255",
+            # Heading tape defaults
+            "ht_font_size": 16,
+            "ht_tick_interval": 10,
+            "ht_bg": "0,0,0",
+            "ht_fg": "255,255,255",
+            "ht_marker": "255,0,0",
+            "ht_opacity": 180,
         }
 
     def _on_snap_toggle(self):
@@ -2430,6 +2445,17 @@ COMPONENT_OPTIONS = {
         "title": "Motor Speed Indicator Options",
         "fields": [
             ("gauge_size", "Size", "spinbox", 256, (64, 512, 16)),
+        ],
+    },
+    "heading_tape": {
+        "title": "Heading Tape Options",
+        "fields": [
+            ("ht_font_size", "Font Size", "spinbox", 16, (8, 48, 2)),
+            ("ht_tick_interval", "Tick Interval (°)", "spinbox", 10, (5, 45, 5)),
+            ("ht_bg", "Background (R,G,B)", "colour_select", "0,0,0", []),
+            ("ht_fg", "Foreground (R,G,B)", "colour_select", "255,255,255", []),
+            ("ht_marker", "Marker (R,G,B)", "colour_select", "255,0,0", []),
+            ("ht_opacity", "Opacity (0-255)", "spinbox", 180, (0, 255, 10)),
         ],
     },
 }
