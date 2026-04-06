@@ -222,7 +222,7 @@ COMPONENT_DEFS = [
 
     ("power_gauge", "Power Gauge", 256, 256, "#bb4488",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="power_gauge">
-        <component type="{gauge_style}" size="{gauge_size}" metric="power" units="watt" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}" arc-value-lower="{gauge_min}" arc-value-upper="0"{gauge_colour_attrs} arc-inner-rgb="{regen_colour}" arc-outer-rgb="{regen_colour}"/>
+        <component type="{gauge_style}" size="{gauge_size}" metric="power" units="watt" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"{gauge_colour_attrs}/>
 {gauge_title_line}
     </composite>'''),
 
@@ -1170,6 +1170,14 @@ def _gauge_colour_attrs(comp: OverlayComponent, fmt_vars: dict) -> str:
     tick = fmt_vars.get("gauge_tick", "0,0,0")
     ann = fmt_vars.get("gauge_ann", "0,0,0")
     fill = fmt_vars.get("gauge_fill", "0,191,255")
+    regen = fmt_vars.get("regen_colour", "68,187,68,180")
+    gauge_min = fmt_vars.get("gauge_min", 0)
+
+    # Arc/regen zone attributes — only for styles that support them
+    arc_attrs = ""
+    if comp.name == "power_gauge" and style in ("cairo-gauge-arc-annotated", "cairo-gauge-donut"):
+        arc_attrs = (f' arc-value-lower="{gauge_min}" arc-value-upper="0"'
+                     f' arc-inner-rgb="{regen}" arc-outer-rgb="{regen}"')
 
     if style == "cairo-gauge-marker":
         return (f' tick-rgb="{tick}" background-rgb="{bg}"'
@@ -1177,9 +1185,15 @@ def _gauge_colour_attrs(comp: OverlayComponent, fmt_vars: dict) -> str:
     elif style == "cairo-gauge-donut":
         return (f' needle-rgb="{needle}"'
                 f' major-tick-rgb="{tick}" minor-tick-rgb="{tick}"'
-                f' major-ann-rgb="{ann}" minor-ann-rgb="{ann}"')
+                f' major-ann-rgb="{ann}" minor-ann-rgb="{ann}"'
+                f'{arc_attrs}')
+    elif style == "cairo-gauge-arc-annotated":
+        return (f' background-rgb="{bg}" needle-rgb="{needle}"'
+                f' major-tick-rgb="{tick}" minor-tick-rgb="{tick}"'
+                f' major-ann-rgb="{ann}" minor-ann-rgb="{ann}"'
+                f'{arc_attrs}')
     else:
-        # round-annotated and arc-annotated
+        # round-annotated — no arc attributes
         return (f' background-rgb="{bg}" needle-rgb="{needle}"'
                 f' major-tick-rgb="{tick}" minor-tick-rgb="{tick}"'
                 f' major-ann-rgb="{ann}" minor-ann-rgb="{ann}"')
