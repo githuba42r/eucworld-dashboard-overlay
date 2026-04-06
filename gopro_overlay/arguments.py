@@ -89,6 +89,13 @@ def gopro_dashboard_arguments(args=None):
     parser.add_argument("--font", help="Selects a font", default="Roboto-Medium.ttf")
     parser.add_argument("--privacy", help="Set privacy zone (lat,lon,km)")
 
+    parser.add_argument("--exclusion-zones", type=pathlib.Path,
+                        help="JSON file defining geographic exclusion zones. "
+                             "Default: ~/.gopro-graphics/exclusion-zones.json if it exists.")
+    parser.add_argument("--exclusion-mode", choices=["black", "cut"], default="black",
+                        help="How to handle excluded zones: 'black' replaces frames with black, "
+                             "'cut' removes excluded segments from the output video entirely.")
+
     parser.add_argument("--generate", choices=["default", "overlay", "none"], default="default",
                         help="Type of output to generate")
     parser.add_argument("--overlay-size",

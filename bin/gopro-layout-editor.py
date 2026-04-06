@@ -1429,6 +1429,8 @@ class LayoutEditorApp(tk.Tk):
         settings_menu.add_command(label="GPX/Video Time Sync...", command=self._show_sync_dialog)
         settings_menu.add_separator()
         settings_menu.add_command(label="API Keys...", command=self._show_api_keys_dialog)
+        settings_menu.add_separator()
+        settings_menu.add_command(label="Exclusion Zones...", command=self._show_exclusion_dialog)
         menubar.add_cascade(label="Settings", menu=settings_menu)
 
         self.config(menu=menubar)
@@ -1821,6 +1823,9 @@ class LayoutEditorApp(tk.Tk):
 
     def _show_api_keys_dialog(self):
         ApiKeysDialog(self)
+
+    def _show_exclusion_dialog(self):
+        ExclusionZonesDialog(self)
 
     def _add_videos(self):
         paths = filedialog.askopenfilenames(
@@ -4521,6 +4526,182 @@ def _load_dotenv(path: str):
                     os.environ[key] = value
     except FileNotFoundError:
         print(f"Warning: .env file not found: {path}")
+
+
+class ExclusionZonesDialog(tk.Toplevel):
+    """Dialog for managing geographic exclusion zones."""
+
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.title("Exclusion Zones")
+        self.geometry("600x500")
+        self.transient(parent)
+
+        self._default_path = Path.home() / ".gopro-graphics" / "exclusion-zones.json"
+        self._zones = []  # list of dicts
+        self._build_ui()
+        self._load_default()
+
+    def _build_ui(self):
+        # Path label
+        path_frame = ttk.Frame(self)
+        path_frame.pack(fill=tk.X, padx=8, pady=(8, 4))
+        ttk.Label(path_frame, text="File:").pack(side=tk.LEFT)
+        self._path_var = tk.StringVar(value=str(self._default_path))
+        ttk.Entry(path_frame, textvariable=self._path_var, state="readonly").pack(
+            side=tk.LEFT, fill=tk.X, expand=True, padx=(4, 0))
+
+        # Zone list
+        list_frame = ttk.LabelFrame(self, text="Zones")
+        list_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=4)
+
+        columns = ("name", "lat", "lon", "radius", "buffer", "enabled")
+        self._tree = ttk.Treeview(list_frame, columns=columns, show="headings", height=10)
+        self._tree.heading("name", text="Name")
+        self._tree.heading("lat", text="Lat")
+        self._tree.heading("lon", text="Lon")
+        self._tree.heading("radius", text="Radius (m)")
+        self._tree.heading("buffer", text="Buffer (m)")
+        self._tree.heading("enabled", text="Enabled")
+        self._tree.column("name", width=120)
+        self._tree.column("lat", width=80)
+        self._tree.column("lon", width=80)
+        self._tree.column("radius", width=80)
+        self._tree.column("buffer", width=80)
+        self._tree.column("enabled", width=60)
+        self._tree.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+
+        scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=self._tree.yview)
+        self._tree.configure(yscrollcommand=scrollbar.set)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # Add zone form
+        add_frame = ttk.LabelFrame(self, text="Add Zone")
+        add_frame.pack(fill=tk.X, padx=8, pady=4)
+
+        row = ttk.Frame(add_frame)
+        row.pack(fill=tk.X, padx=4, pady=2)
+        ttk.Label(row, text="Name:").pack(side=tk.LEFT)
+        self._name_var = tk.StringVar()
+        ttk.Entry(row, textvariable=self._name_var, width=15).pack(side=tk.LEFT, padx=(4, 8))
+        ttk.Label(row, text="Lat:").pack(side=tk.LEFT)
+        self._lat_var = tk.StringVar()
+        ttk.Entry(row, textvariable=self._lat_var, width=10).pack(side=tk.LEFT, padx=(4, 8))
+        ttk.Label(row, text="Lon:").pack(side=tk.LEFT)
+        self._lon_var = tk.StringVar()
+        ttk.Entry(row, textvariable=self._lon_var, width=10).pack(side=tk.LEFT, padx=(4, 8))
+
+        row2 = ttk.Frame(add_frame)
+        row2.pack(fill=tk.X, padx=4, pady=2)
+        ttk.Label(row2, text="Radius (m):").pack(side=tk.LEFT)
+        self._radius_var = tk.StringVar(value="200")
+        ttk.Entry(row2, textvariable=self._radius_var, width=8).pack(side=tk.LEFT, padx=(4, 8))
+        ttk.Label(row2, text="Buffer (m):").pack(side=tk.LEFT)
+        self._buffer_var = tk.StringVar(value="0")
+        ttk.Entry(row2, textvariable=self._buffer_var, width=8).pack(side=tk.LEFT, padx=(4, 8))
+        ttk.Button(row2, text="Add", command=self._add_zone).pack(side=tk.RIGHT, padx=4)
+
+        # Buttons
+        btn_frame = ttk.Frame(self)
+        btn_frame.pack(fill=tk.X, padx=8, pady=(4, 8))
+        ttk.Button(btn_frame, text="Remove Selected", command=self._remove_zone).pack(side=tk.LEFT, padx=4)
+        ttk.Button(btn_frame, text="Toggle Enabled", command=self._toggle_enabled).pack(side=tk.LEFT, padx=4)
+        ttk.Button(btn_frame, text="Load...", command=self._load_file).pack(side=tk.RIGHT, padx=4)
+        ttk.Button(btn_frame, text="Save", command=self._save_file).pack(side=tk.RIGHT, padx=4)
+
+    def _load_default(self):
+        if self._default_path.exists():
+            self._load_from_path(self._default_path)
+
+    def _load_from_path(self, path):
+        try:
+            with open(path) as f:
+                data = json.load(f)
+            self._zones = data.get("zones", [])
+            self._path_var.set(str(path))
+            self._refresh_tree()
+        except Exception as e:
+            messagebox.showerror("Load Error", str(e), parent=self)
+
+    def _refresh_tree(self):
+        self._tree.delete(*self._tree.get_children())
+        for z in self._zones:
+            center = z.get("center", {})
+            self._tree.insert("", tk.END, values=(
+                z.get("name", ""),
+                center.get("lat", ""),
+                center.get("lon", ""),
+                z.get("radius_m", ""),
+                z.get("buffer_m", 0),
+                "Yes" if z.get("enabled", True) else "No",
+            ))
+
+    def _add_zone(self):
+        name = self._name_var.get().strip()
+        if not name:
+            messagebox.showwarning("Missing Name", "Please enter a zone name.", parent=self)
+            return
+        try:
+            lat = float(self._lat_var.get())
+            lon = float(self._lon_var.get())
+            radius = float(self._radius_var.get())
+            buffer_m = float(self._buffer_var.get())
+        except ValueError:
+            messagebox.showwarning("Invalid Input",
+                                   "Lat, Lon, Radius, and Buffer must be numbers.", parent=self)
+            return
+
+        self._zones.append({
+            "name": name,
+            "type": "circle",
+            "center": {"lat": lat, "lon": lon},
+            "radius_m": radius,
+            "buffer_m": buffer_m,
+            "enabled": True,
+        })
+        self._refresh_tree()
+        self._name_var.set("")
+        self._lat_var.set("")
+        self._lon_var.set("")
+
+    def _remove_zone(self):
+        sel = self._tree.selection()
+        if not sel:
+            return
+        idx = self._tree.index(sel[0])
+        del self._zones[idx]
+        self._refresh_tree()
+
+    def _toggle_enabled(self):
+        sel = self._tree.selection()
+        if not sel:
+            return
+        idx = self._tree.index(sel[0])
+        self._zones[idx]["enabled"] = not self._zones[idx].get("enabled", True)
+        self._refresh_tree()
+
+    def _load_file(self):
+        path = filedialog.askopenfilename(
+            title="Open Exclusion Zones",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+            parent=self,
+        )
+        if path:
+            self._load_from_path(Path(path))
+
+    def _save_file(self):
+        path = Path(self._path_var.get())
+        path.parent.mkdir(parents=True, exist_ok=True)
+        data = {
+            "version": 1,
+            "zones": self._zones,
+        }
+        try:
+            with open(path, "w") as f:
+                json.dump(data, f, indent=2)
+            messagebox.showinfo("Saved", f"Exclusion zones saved to:\n{path}", parent=self)
+        except Exception as e:
+            messagebox.showerror("Save Error", str(e), parent=self)
 
 
 if __name__ == "__main__":

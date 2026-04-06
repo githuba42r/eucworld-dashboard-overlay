@@ -22,6 +22,8 @@
 #   --sample-duration <seconds>   Only render N seconds (for testing)
 #   --no-gpu                      Disable GPU encoding
 #   --map-style <style>           Map tile style (default: osm)
+#   --exclusion-zones <file>      JSON file defining exclusion zones
+#   --exclusion-mode <black|cut>  How to handle excluded zones (default: black)
 #
 # The route file is auto-detected: first .xlsx, then .gpx, then .fit
 # in the target folder. If multiple exist, XLSX takes priority.
@@ -53,6 +55,8 @@ if [[ $# -lt 2 ]]; then
     echo "  --sample-duration <secs>   Render only N seconds (testing)"
     echo "  --no-gpu                   Disable NVIDIA GPU encoding"
     echo "  --map-style <style>        Map tile style (default: osm)"
+    echo "  --exclusion-zones <file>   JSON exclusion zones file"
+    echo "  --exclusion-mode <mode>    black or cut (default: black)"
     exit 0
 fi
 
@@ -69,6 +73,8 @@ GPX_TIME_OFFSET=""
 SAMPLE_DURATION=""
 NO_GPU=false
 MAP_STYLE="osm"
+EXCLUSION_ZONES=""
+EXCLUSION_MODE=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -77,6 +83,8 @@ while [[ $# -gt 0 ]]; do
         --sample-duration)  shift; SAMPLE_DURATION="$1"; shift ;;
         --no-gpu)           NO_GPU=true; shift ;;
         --map-style)        shift; MAP_STYLE="$1"; shift ;;
+        --exclusion-zones)  shift; EXCLUSION_ZONES="$1"; shift ;;
+        --exclusion-mode)   shift; EXCLUSION_MODE="$1"; shift ;;
         *)                  die "Unknown option: $1" ;;
     esac
 done
@@ -223,6 +231,8 @@ for video in "${VIDEOS[@]}"; do
     [[ -n "$GPX_TIME_OFFSET" ]] && CMD+=(--gpx-time-offset "$GPX_TIME_OFFSET")
     [[ -n "$SAMPLE_DURATION" ]] && CMD+=(--sample-duration "$SAMPLE_DURATION")
     [[ ${#GPU_ARGS[@]} -gt 0 ]] && CMD+=("${GPU_ARGS[@]}")
+    [[ -n "$EXCLUSION_ZONES" ]] && CMD+=(--exclusion-zones "$EXCLUSION_ZONES")
+    [[ -n "$EXCLUSION_MODE" ]] && CMD+=(--exclusion-mode "$EXCLUSION_MODE")
 
     CMD+=("$video" "$output")
 

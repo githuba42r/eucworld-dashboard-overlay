@@ -309,6 +309,19 @@ if __name__ == "__main__":
             else:
                 privacy_zone = NoPrivacyZone()
 
+            # Load exclusion zones
+            from gopro_overlay.exclusion import (
+                load_exclusion_zones, default_exclusion_path, NoExclusionZones, draw_redacted
+            )
+            if args.exclusion_zones:
+                exclusion_zones = load_exclusion_zones(assert_file_exists(args.exclusion_zones))
+                log(f"Loaded exclusion zones from {args.exclusion_zones}")
+            elif default_exclusion_path().exists():
+                exclusion_zones = load_exclusion_zones(default_exclusion_path())
+                log(f"Auto-loaded exclusion zones: {default_exclusion_path()}")
+            else:
+                exclusion_zones = NoExclusionZones()
+
             with MapRenderer(
                     cache_dir=cache_dir,
                     styler=MapStyler(
@@ -415,10 +428,34 @@ if __name__ == "__main__":
                                 if max_frames and index >= max_frames:
                                     break
                                 progress.update(index)
-                                draw_timer.time(lambda: buffer.draw(lambda frame: overlay.draw(dt, frame)))
+                                entry = frame_meta.get(dt)
+                                if entry.point is not None and exclusion_zones.is_excluded(entry.point):
+                                    draw_timer.time(lambda: buffer.draw(
+                                        lambda frame: draw_redacted(frame, exclusion_zones.redact_style)))
+                                else:
+                                    draw_timer.time(lambda: buffer.draw(
+                                        lambda frame: overlay.draw(dt, frame)))
 
                     log("Finished drawing frames. waiting for ffmpeg to catch up")
                     progress.complete()
+
+                    if args.exclusion_mode == "cut" and hasattr(exclusion_zones, 'pre_scan'):
+                        exclusion_windows = exclusion_zones.pre_scan(frame_meta)
+                        if exclusion_windows:
+                            log(f"Cutting {len(exclusion_windows)} excluded segments from output...")
+                            conditions = "+".join(
+                                f"between(t,{s:.1f},{e:.1f})" for s, e in exclusion_windows
+                            )
+                            cut_output = output.with_stem(output.stem + "_cut")
+                            cut_cmd = [
+                                "ffmpeg", "-y", "-i", str(output),
+                                "-vf", f"select='not({conditions})',setpts=N/FRAME_RATE/TB",
+                                "-af", f"aselect='not({conditions})',asetpts=N/SR/TB",
+                                str(cut_output)
+                            ]
+                            import subprocess
+                            subprocess.run(cut_cmd, check=True)
+                            log(f"Cut output: {cut_output}")
 
                 finally:
                     for t in [draw_timer]:
