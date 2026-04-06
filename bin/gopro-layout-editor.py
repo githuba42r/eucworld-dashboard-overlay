@@ -116,7 +116,7 @@ COMPONENT_DEFS = [
     ("gradient_chart", "Alt Chart", 600, 80, "#aa88cc",
      '''    <composite x="{x}" y="{y}" name="gradient_chart">
         <component type="chart" x="0" y="0" units="alt" width="{w}" height="{h}" filled="{chart_filled}" seconds="{chart_seconds}" bg="{chart_bg}" fill="{chart_fill}" line="{chart_line}"/>
-        <component type="text" x="4" y="2" size="{title_size}" rgb="{title_rgb}">{comp_title}</component>
+{chart_title_line}
     </composite>'''),
 
     ("gradient", "Gradient", 150, 70, "#ccaa44",
@@ -192,44 +192,44 @@ COMPONENT_DEFS = [
     ("battery_chart", "Battery Chart", 300, 80, "#44bb44",
      '''    <composite x="{x}" y="{y}" name="battery_chart">
         <component type="chart" x="0" y="0" metric="battery" units="percent" width="{w}" height="{h}" filled="true" seconds="300" bg="0,0,0,170" fill="68,187,68,170" line="255,255,255,170"/>
-        <component type="text" x="4" y="2" size="{title_size}" rgb="{title_rgb}">{comp_title}</component>
+{chart_title_line}
     </composite>'''),
 
     ("voltage_chart", "Voltage Chart", 300, 80, "#bbbb44",
      '''    <composite x="{x}" y="{y}" name="voltage_chart">
         <component type="chart" x="0" y="0" metric="voltage" units="volt" width="{w}" height="{h}" filled="true" seconds="300" bg="0,0,0,170" fill="187,187,68,170" line="255,255,255,170"/>
-        <component type="text" x="4" y="2" size="{title_size}" rgb="{title_rgb}">{comp_title}</component>
+{chart_title_line}
     </composite>'''),
 
     ("power_chart", "Power Chart", 300, 80, "#bb4488",
      '''    <composite x="{x}" y="{y}" name="power_chart">
         <component type="chart" x="0" y="0" metric="power" units="watt" width="{w}" height="{h}" filled="true" seconds="300" bg="0,0,0,170" fill="187,68,136,170" line="255,255,255,170"/>
-        <component type="text" x="4" y="2" size="{title_size}" rgb="{title_rgb}">{comp_title}</component>
+{chart_title_line}
     </composite>'''),
 
     # -- Gauges --
     ("speed_gauge", "Speed Gauge", 256, 256, "#ff6644",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="speed_gauge">
         <component type="{gauge_style}" size="{gauge_size}" metric="speed" units="kph" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"{gauge_colour_attrs}/>
-        <component type="text" x="{title_x}" y="{title_gauge_y}" size="{title_size}" rgb="{title_rgb}" align="center">{comp_title}</component>
+{gauge_title_line}
     </composite>'''),
 
     ("battery_gauge", "Battery Gauge", 256, 256, "#44bb44",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="battery_gauge">
         <component type="{gauge_style}" size="{gauge_size}" metric="battery" units="percent" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"{gauge_colour_attrs}/>
-        <component type="text" x="{title_x}" y="{title_gauge_y}" size="{title_size}" rgb="{title_rgb}" align="center">{comp_title}</component>
+{gauge_title_line}
     </composite>'''),
 
     ("power_gauge", "Power Gauge", 256, 256, "#bb4488",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="power_gauge">
         <component type="{gauge_style}" size="{gauge_size}" metric="power" units="watt" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}" arc-value-lower="{gauge_min}" arc-value-upper="0"{gauge_colour_attrs} arc-inner-rgb="{regen_colour}" arc-outer-rgb="{regen_colour}"/>
-        <component type="text" x="{title_x}" y="{title_gauge_y}" size="{title_size}" rgb="{title_rgb}" align="center">{comp_title}</component>
+{gauge_title_line}
     </composite>'''),
 
     ("voltage_gauge", "Voltage Gauge", 256, 256, "#bbbb44",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="voltage_gauge">
         <component type="{gauge_style}" size="{gauge_size}" metric="voltage" units="volt" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"{gauge_colour_attrs}/>
-        <component type="text" x="{title_x}" y="{title_gauge_y}" size="{title_size}" rgb="{title_rgb}" align="center">{comp_title}</component>
+{gauge_title_line}
     </composite>'''),
 
     ("compass_display", "Compass", 256, 256, "#6688cc",
@@ -271,7 +271,7 @@ COMPONENT_DEFS = [
     ("msi_gauge", "Motor Speed Indicator", 256, 256, "#884488",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="msi_gauge">
         <component type="msi2" size="{gauge_size}" metric="speed" units="kph" green="{msi_green}" yellow="{msi_yellow}" end="{msi_end}" rotate="{msi_rotate}" textsize="{msi_textsize}"/>
-        <component type="text" x="{title_x}" y="{title_gauge_y}" size="{title_size}" rgb="{title_rgb}" align="center">{comp_title}</component>
+{gauge_title_line}
     </composite>'''),
 
     # -- Average speed components --
@@ -290,13 +290,13 @@ COMPONENT_DEFS = [
     ("avg_speed_gauge", "Avg Speed Gauge", 256, 256, "#ff9944",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="avg_speed_gauge">
         <component type="{gauge_style}" size="{gauge_size}" metric="avg-speed" units="kph" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"{gauge_colour_attrs}/>
-        <component type="text" x="{title_x}" y="{title_gauge_y}" size="{title_size}" rgb="{title_rgb}" align="center">{comp_title}</component>
+{gauge_title_line}
     </composite>'''),
 
     ("avg_speed_moving_gauge", "Avg Moving Gauge", 256, 256, "#ffbb44",
      '''    <composite x="{x}" y="{y}" width="{w}" height="{h}" name="avg_speed_moving_gauge">
         <component type="{gauge_style}" size="{gauge_size}" metric="avg-speed-moving" units="kph" max="{gauge_max}" min="{gauge_min}" start="{gauge_start}" length="{gauge_length}" sectors="{gauge_sectors}"{gauge_colour_attrs}/>
-        <component type="text" x="{title_x}" y="{title_gauge_y}" size="{title_size}" rgb="{title_rgb}" align="center">{comp_title}</component>
+{gauge_title_line}
     </composite>'''),
 
     ("avg_speed_bar", "Avg Speed Bar", 400, 30, "#ff9944",
@@ -1140,6 +1140,18 @@ def generate_layout_xml(components: list[OverlayComponent], map_props: dict,
                 fmt_vars[k] = v
             # Build gauge colour attributes based on selected style
             fmt_vars["gauge_colour_attrs"] = _gauge_colour_attrs(comp, fmt_vars)
+            # Build title lines — empty string when no title set
+            title = str(fmt_vars.get("comp_title", "")).strip()
+            if title:
+                ts = fmt_vars.get("title_size", 14)
+                tr = fmt_vars.get("title_rgb", "255,255,255")
+                tx = fmt_vars.get("title_x", 128)
+                tgy = fmt_vars.get("title_gauge_y", 200)
+                fmt_vars["chart_title_line"] = f'        <component type="text" x="4" y="2" size="{ts}" rgb="{tr}">{title}</component>'
+                fmt_vars["gauge_title_line"] = f'        <component type="text" x="{tx}" y="{tgy}" size="{ts}" rgb="{tr}" align="center">{title}</component>'
+            else:
+                fmt_vars["chart_title_line"] = ""
+                fmt_vars["gauge_title_line"] = ""
             xml = comp.xml_template.format(**fmt_vars)
             lines.append(xml)
             lines.append("")
