@@ -1501,11 +1501,28 @@ class LayoutEditorApp(tk.Tk):
         self.video_info_label = ttk.Label(vid_frame, text="", wraplength=200, justify=tk.LEFT)
         self.video_info_label.pack(padx=4, pady=2)
 
-        # Components
+        # Components (scrollable)
         comp_frame = ttk.LabelFrame(left_frame, text="Components")
         comp_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=2)
-        self.comp_checks_frame = ttk.Frame(comp_frame)
-        self.comp_checks_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=2)
+        comp_canvas = tk.Canvas(comp_frame, highlightthickness=0)
+        comp_scrollbar = ttk.Scrollbar(comp_frame, orient=tk.VERTICAL, command=comp_canvas.yview)
+        self.comp_checks_frame = ttk.Frame(comp_canvas)
+        self.comp_checks_frame.bind(
+            "<Configure>",
+            lambda e: comp_canvas.configure(scrollregion=comp_canvas.bbox("all")))
+        comp_canvas.create_window((0, 0), window=self.comp_checks_frame, anchor=tk.NW)
+        comp_canvas.configure(yscrollcommand=comp_scrollbar.set)
+        comp_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        comp_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=4, pady=2)
+        # Mouse wheel scrolling
+        def _on_comp_mousewheel(event):
+            comp_canvas.yview_scroll(int(-1 * (event.delta / 120 or (-1 if event.num == 4 else 1))), "units")
+        for widget in (comp_canvas, self.comp_checks_frame):
+            widget.bind("<Button-4>", _on_comp_mousewheel)
+            widget.bind("<Button-5>", _on_comp_mousewheel)
+            widget.bind("<MouseWheel>", _on_comp_mousewheel)
+        self._comp_canvas = comp_canvas
+        self._on_comp_mousewheel = _on_comp_mousewheel
         self.comp_vars: dict[str, tk.BooleanVar] = {}
 
         # -- Centre: canvas + slider --
@@ -2005,6 +2022,11 @@ class LayoutEditorApp(tk.Tk):
                 self.comp_checks_frame, text=comp.label, variable=var,
                 command=lambda c=comp, v=var: self._toggle_component(c, v))
             cb.pack(anchor=tk.W, padx=2, pady=1)
+            # Bind mousewheel on each checkbox so scrolling works when hovering over them
+            if hasattr(self, "_on_comp_mousewheel"):
+                cb.bind("<Button-4>", self._on_comp_mousewheel)
+                cb.bind("<Button-5>", self._on_comp_mousewheel)
+                cb.bind("<MouseWheel>", self._on_comp_mousewheel)
 
     def _toggle_component(self, comp: OverlayComponent, var: tk.BooleanVar):
         comp.enabled = var.get()
