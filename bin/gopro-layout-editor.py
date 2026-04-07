@@ -1393,6 +1393,7 @@ class LayoutEditorApp(tk.Tk):
         self.active_video_idx: int = -1
         self.scale_factor: float = 1.0
         self.current_photo: Optional[ImageTk.PhotoImage] = None
+        self._raw_frame: Optional[Image.Image] = None
         self.speed_unit = tk.StringVar(value="kph")
         self.map_style = tk.StringVar(value="osm")
         self.map_size = tk.IntVar(value=256)
@@ -1924,12 +1925,12 @@ class LayoutEditorApp(tk.Tk):
         self.scale_factor = min(cw / video.eff_width, ch / video.eff_height)
 
     def _on_canvas_resize(self, event):
-        self._update_scale()
-        self._redraw_components()
         self._draw_snap_grid()
-        # Re-show current frame if we have one
-        if self.current_photo:
-            self._show_current_frame()
+        if self._raw_frame is not None:
+            self._rescale_and_show_frame()
+        else:
+            self._update_scale()
+            self._redraw_components()
 
     # -- Frame extraction --
 
@@ -1959,14 +1960,20 @@ class LayoutEditorApp(tk.Tk):
             self.after(50, self._poll_frame_queue)
 
     def _display_frame(self, img: Image.Image):
+        self._raw_frame = img
+        self._rescale_and_show_frame()
+        self.status_var.set("Ready.")
+
+    def _rescale_and_show_frame(self):
+        if self._raw_frame is None:
+            return
         self._update_scale()
-        scaled_w = int(img.width * self.scale_factor)
-        scaled_h = int(img.height * self.scale_factor)
-        scaled = img.resize((scaled_w, scaled_h), Image.Resampling.LANCZOS)
+        scaled_w = int(self._raw_frame.width * self.scale_factor)
+        scaled_h = int(self._raw_frame.height * self.scale_factor)
+        scaled = self._raw_frame.resize((scaled_w, scaled_h), Image.Resampling.LANCZOS)
         self.current_photo = ImageTk.PhotoImage(scaled)
         self._show_current_frame()
         self._redraw_components()
-        self.status_var.set("Ready.")
 
     def _show_current_frame(self):
         self.canvas.delete("bg_image")
