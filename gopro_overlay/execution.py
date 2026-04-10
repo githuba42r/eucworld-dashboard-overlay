@@ -32,9 +32,10 @@ class InProcessExecution:
                 if not process.stdin.closed:
                     process.stdin.flush()
                     process.stdin.close()
-                # really long wait as FFMPEG processes all the mpeg input file - not sure how to prevent this atm
+                # Long wait as FFMPEG finalises the output file (moov atom, indexes).
+                # Large/high-res videos can take well beyond 5 minutes.
                 log("Waiting for ffmpeg to complete...")
-                returncode = process.wait(5 * 60)
+                returncode = process.wait(30 * 60)
                 log(f"FFMPEG Exited with status code: {returncode}")
         except FileNotFoundError:
             raise IOError(f"Unable to execute the process - is '{cmd[0]}' installed") from None
