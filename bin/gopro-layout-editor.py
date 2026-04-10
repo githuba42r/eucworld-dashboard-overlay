@@ -1326,6 +1326,19 @@ def generate_shell_script(
     """Generate a self-contained bash script with embedded layout XML."""
     lines = ["#!/usr/bin/env bash", "set -euo pipefail", ""]
 
+    # Activate the project venv so gopro_overlay is importable
+    venv_dir = dashboard_script.parent.parent / "venv"
+    lines.append("# Activate project virtual environment")
+    lines.append(f'VENV_DIR="{venv_dir}"')
+    lines.append('if [[ -f "$VENV_DIR/bin/activate" ]]; then')
+    lines.append('    source "$VENV_DIR/bin/activate"')
+    lines.append("else")
+    lines.append('    echo "Error: virtual environment not found at $VENV_DIR" >&2')
+    lines.append('    echo "Run editor.sh first to set up the environment." >&2')
+    lines.append("    exit 1")
+    lines.append("fi")
+    lines.append("")
+
     # Write layout XML to a temp file and clean up on exit
     lines.append("# Embedded layout XML")
     lines.append('LAYOUT_XML="$(mktemp /tmp/layout-XXXXXX.xml)"')
