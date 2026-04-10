@@ -25,19 +25,19 @@ if [[ ! -d "$VENV_DIR" ]]; then
     python3 -m venv "$VENV_DIR"
 fi
 
-source "$VENV_DIR/bin/activate"
+PIP="$VENV_DIR/bin/python -m pip"
 
 # Install/update dependencies if requirements.txt is newer than marker
 MARKER="$VENV_DIR/.requirements-installed"
 if [[ ! -f "$MARKER" ]] || [[ "$REQUIREMENTS" -nt "$MARKER" ]]; then
     echo ":: Installing dependencies..."
-    pip install --quiet --upgrade pip
-    pip install --quiet -r "$REQUIREMENTS"
+    $PIP install --quiet --upgrade pip
+    $PIP install --quiet -r "$REQUIREMENTS"
     # openpyxl needed for XLSX support
-    pip install --quiet openpyxl
+    $PIP install --quiet openpyxl
     touch "$MARKER"
 fi
 
 # -- Launch editor --
 echo ":: Starting layout editor..."
-python "$EDITOR" "$@"
+"$VENV_DIR/bin/python" "$EDITOR" "$@"
